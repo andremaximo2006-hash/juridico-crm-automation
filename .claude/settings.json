@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh * root@2.25.128.221 *)",
+      "Bash(ssh root@2.25.128.221 *)",
+      "Bash(scp * root@2.25.128.221:*)"
+    ]
+  }
+}

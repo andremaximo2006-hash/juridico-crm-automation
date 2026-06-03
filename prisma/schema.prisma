@@ -1,0 +1,647 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  financeiro
+  padrao
+}
+
+enum OriginChannel {
+  instagram
+  google
+  referral
+  direct
+  other
+}
+
+enum FunnelStage {
+  new_lead
+  initial_screening
+  meeting
+  proposal_sent
+  contract_signed
+  migrated_to_astrea
+  lost
+}
+
+enum LegalArea {
+  familia
+  trabalhista
+  civil
+  criminal
+  consumidor
+  inventario
+  previdenciario
+  other
+}
+
+enum CaseStatus {
+  active
+  suspended
+  closed_won
+  closed_lost
+}
+
+enum FeeType {
+  pro_labore_entry
+  monthly_retainer
+  success_fee
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+enum TransactionCategory {
+  pro_labore_entry
+  monthly_retainer
+  success_fee
+  office_rent
+  software
+  marketing
+  personnel
+  utilities
+  other_income
+  other_expense
+}
+
+enum TransactionStatus {
+  pending
+  paid
+  overdue
+  installment
+}
+
+enum PaymentMethod {
+  pix
+  bank_transfer
+  credit_card
+  cash
+  other
+}
+
+enum NotificationType {
+  payment_due
+  payment_overdue
+  collection_reminder
+  stage_reminder
+  custom
+}
+
+enum WhatsAppPlatform {
+  zapi
+  meta
+  manychat
+}
+
+enum WhatsAppConversationStatus {
+  active
+  transferred
+  completed
+  closed
+}
+
+enum WhatsAppHumanTicketStatus {
+  pending
+  assigned
+  in_progress
+  resolved
+  cancelled
+}
+
+enum WhatsAppHumanTicketPriority {
+  low
+  normal
+  high
+}
+
+enum NotificationChannel {
+  whatsapp
+  email
+  internal
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  cancelled
+}
+
+enum TimelineEventType {
+  call
+  whatsapp
+  email
+  meeting
+  note
+  stage_change
+  proposal_sent
+}
+
+enum MarketingChannel {
+  instagram
+  google
+  facebook
+  other
+}
+
+// ─── MODELS ──────────────────────────────────────────────────────────────────
+
+model Lead {
+  id              String         @id @default(cuid())
+  name            String
+  cpf             String?        @unique
+  email           String?
+  phone           String
+  profession      String?
+  estimatedIncome Decimal?       @db.Decimal(10, 2)
+  originChannel   OriginChannel?
+  legalArea       LegalArea?
+  caseSummary     String?
+  funnelStage     FunnelStage    @default(new_lead)
+  lostReason      String?
+  referralById    String?
+  createdAt       DateTime       @default(now())
+  stageUpdatedAt  DateTime       @default(now())
+
+  referralBy      Client?        @relation("ReferredBy", fields: [referralById], references: [id])
+  client          Client?        @relation("LeadToClient")
+  timeline        LeadTimeline[]
+  campaigns       LeadCampaign[]
+
+  // WhatsApp IA Relations
+  whatsappConversations  WhatsAppConversation[]
+  whatsappTickets        WhatsAppHumanTicket[]
+
+  @@map("leads")
+}
+
+model LeadTimeline {
+  id           String            @id @default(cuid())
+  leadId       String
+  eventType    TimelineEventType
+  description  String?
+  nextAction   String?
+  nextActionAt DateTime?
+  createdAt    DateTime          @default(now())
+
+  lead         Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("lead_timeline")
+}
+
+model Client {
+  id             String   @id @default(cuid())
+  leadId         String?  @unique
+  name           String
+  cpf            String   @unique
+  email          String?
+  phone          String
+  profession     String?
+  address        Json?
+  astreaClientId String?
+  whatsappOptIn  Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  lead           Lead?          @relation("LeadToClient", fields: [leadId], references: [id])
+  referrals      Lead[]         @relation("ReferredBy")
+  cases          Case[]
+  transactions   Transaction[]
+  notifications  Notification[]
+
+  @@map("clients")
+}
+
+model Case {
+  id               String     @id @default(cuid())
+  clientId         String
+  leadId           String?
+  title            String
+  legalArea        LegalArea?
+  description      String?
+  astreaCaseId     String?
+  contractUrl      String?
+  contractSignedAt DateTime?
+  status           CaseStatus @default(active)
+  createdAt        DateTime   @default(now())
+
+  client           Client                    @relation(fields: [clientId], references: [id])
+  feeAgreements    FeeAgreement[]
+  transactions     Transaction[]
+  checklist        AstreaMigrationChecklist?
+
+  @@map("cases")
+}
+
+model FeeAgreement {
+  id                String   @id @default(cuid())
+  caseId            String
+  type              FeeType
+  amount            Decimal? @db.Decimal(10, 2)
+  percentageValue   Decimal? @db.Decimal(5, 2)
+  totalInstallments Int      @default(1)
+  firstDueDate      DateTime
+  recurrenceDay     Int?
+  description       String?
+  createdAt         DateTime @default(now())
+
+  case              Case          @relation(fields: [caseId], references: [id])
+  transactions      Transaction[]
+
+  @@map("fee_agreements")
+}
+
+model Transaction {
+  id                String              @id @default(cuid())
+  feeAgreementId    String?
+  caseId            String?
+  clientId          String?
+  type              TransactionType
+  category          TransactionCategory
+  description       String?
+  amount            Decimal             @db.Decimal(10, 2)
+  dueDate           DateTime
+  paidDate          DateTime?
+  status            TransactionStatus   @default(pending)
+  installmentNumber Int?
+  totalInstallments Int?
+  paymentMethod     PaymentMethod?
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  feeAgreement      FeeAgreement?  @relation(fields: [feeAgreementId], references: [id])
+  case              Case?          @relation(fields: [caseId], references: [id])
+  client            Client?        @relation(fields: [clientId], references: [id])
+  notifications     Notification[]
+
+  @@map("transactions")
+}
+
+model OfficeExpense {
+  id        String   @id @default(cuid())
+  name      String
+  category  String?
+  amount    Decimal  @db.Decimal(10, 2)
+  dueDay    Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("office_expenses")
+}
+
+model Notification {
+  id            String              @id @default(cuid())
+  type          NotificationType
+  transactionId String?
+  clientId      String?
+  leadId        String?
+  message       String
+  channel       NotificationChannel
+  scheduledAt   DateTime
+  sentAt        DateTime?
+  status        NotificationStatus  @default(pending)
+  createdAt     DateTime            @default(now())
+
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  client        Client?      @relation(fields: [clientId], references: [id])
+
+  @@map("notifications")
+}
+
+model MarketingSpend {
+  id          String           @id @default(cuid())
+  channel     MarketingChannel
+  campaign    String?
+  amount      Decimal          @db.Decimal(10, 2)
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime         @default(now())
+
+  campaigns   LeadCampaign[]
+
+  @@map("marketing_spends")
+}
+
+model LeadCampaign {
+  id           String   @id @default(cuid())
+  leadId       String
+  campaignId   String
+  attributedAt DateTime @default(now())
+
+  lead         Lead           @relation(fields: [leadId], references: [id])
+  campaign     MarketingSpend @relation(fields: [campaignId], references: [id])
+
+  @@unique([leadId, campaignId])
+  @@map("lead_campaigns")
+}
+
+model AstreaMigrationChecklist {
+  id          String    @id @default(cuid())
+  caseId      String    @unique
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  case        Case                  @relation(fields: [caseId], references: [id])
+  items       AstreaMigrationItem[]
+
+  @@map("astrea_checklists")
+}
+
+model AstreaMigrationItem {
+  id          String    @id @default(cuid())
+  checklistId String
+  label       String
+  isDone      Boolean   @default(false)
+  doneAt      DateTime?
+  sortOrder   Int
+
+  checklist   AstreaMigrationChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@map("astrea_checklist_items")
+}
+
+model DashboardWidget {
+  id        String   @id @default(cuid())
+  widgetKey String   @unique
+  label     String
+  isVisible Boolean  @default(true)
+  sortOrder Int
+  config    Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("dashboard_widgets")
+}
+
+model MarketingAnalysis {
+  id           String   @id @default(cuid())
+  channel      String
+  campaign     String?
+  periodStart  DateTime
+  periodEnd    DateTime
+  investimento Decimal  @db.Decimal(10, 2)
+  leads        Int
+  consultas    Int
+  contratos    Int
+  receita      Decimal  @db.Decimal(10, 2)
+  analysis     String   @db.Text
+  createdAt    DateTime @default(now())
+
+  @@map("marketing_analyses")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(padrao)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // WhatsApp IA Relations
+  createdRoutines             WhatsAppRoutine[] @relation("RoutinesCreatedBy")
+  transferredConversations    WhatsAppConversation[] @relation("ConversationsTransferredTo")
+  assignedTickets             WhatsAppHumanTicket[] @relation("HumanTicketsAssignedTo")
+
+  @@map("users")
+}
+
+model SalMaternidadeEntry {
+  id           String   @id @default(cuid())
+  cliente      String
+  contato      String?
+  beneficio    String?
+  contribuicao String?
+  dppOuDn      String?
+  pagamento    String?
+  planejamento String?
+  status       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("sal_maternidade_entries")
+}
+
+model PrazoEntry {
+  id            String    @id @default(cuid())
+  cliente       String
+  processo      String?
+  areaAtuacao   String?
+  tipoPrazo     String?
+  dataInicial   DateTime?
+  dataFinal     DateTime?
+  responsavel   String?
+  status        String?
+  observacoes   String?
+  modificadoPor String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("prazo_entries")
+}
+
+model CadSenhaEntry {
+  id                String    @id @default(cuid())
+  entrada           DateTime?
+  cliente           String
+  contato           String?
+  natureza          String?
+  beneficio         String?
+  procuracao        String?
+  substabelecimento String?
+  rg                String?
+  status            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("cad_senha_entries")
+}
+
+model ConcessaoEntry {
+  id              String    @id @default(cuid())
+  data            DateTime?
+  cliente         String
+  beneficio       String?
+  dataRecebimento DateTime?
+  valorHonorarios String?
+  boletos         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("concessao_entries")
+}
+
+model AcessoEntry {
+  id        String   @id @default(cuid())
+  sistema   String
+  login     String?
+  senha     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("acesso_entries")
+}
+
+model InicialEntry {
+  id               String    @id @default(cuid())
+  cliente          String
+  processo         String?
+  areaAtuacao      String?
+  tipoRequerimento String?
+  dataInicial      DateTime?
+  protocolo        String?
+  responsavel      String?
+  status           String?
+  observacoes      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("inicial_entries")
+}
+
+model OperacionalEntry {
+  id               String    @id @default(cuid())
+  dataEntrada      DateTime
+  cliente          String
+  contato          String?
+  natureza         String    @default("LEAD")
+  areaAtuacao      String?
+  beneficioDemanda String?
+  obsStatus        String?   // "Obs / Status" — status curto (EM ANDAMENTO, BENEFÍCIO CONCEDIDO, etc.)
+  conformidade     String?
+  setor            String?
+  cadSenha         String?
+  statusAtual      String?   // "Situação Atual" — descrição longa
+  honorarios       Decimal?  @db.Decimal(10, 2)  // HONORÁRIOS
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("operacional_entries")
+}
+
+model AppSetting {
+  key   String @id
+  value String
+
+  @@map("app_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String?
+  action     String   // CREATE | UPDATE | DELETE
+  entity     String   // leads | clientes | financeiro | operacional
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ─── WHATSAPP IA INTEGRATION ───────────────────────────────────────────────
+
+// Roteiros configuráveis (system prompts por área jurídica)
+model WhatsAppRoutine {
+  id              String    @id @default(cuid())
+  legalArea       String    @unique @map("legal_area")
+  name            String?
+  systemPrompt    String    @map("system_prompt")  // System prompt da IA
+  tools           Json?
+  active          Boolean   @default(true)
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       User?     @relation("RoutinesCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById     String?   @map("created_by_id")
+
+  @@index([legalArea])
+  @@index([active])
+  @@map("whatsapp_routines")
+}
+
+// Conversas WhatsApp
+model WhatsAppConversation {
+  id                        String   @id @default(cuid())
+  leadId                    String   @map("lead_id")
+  lead                      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  platform                  WhatsAppPlatform?
+  platformContactId         String?  @map("platform_contact_id")
+  phoneNumber               String?  @map("phone_number")
+  legalArea                 String?  @map("legal_area")
+  conversationHistory       Json?    @map("conversation_history")  // [{"role": "user/assistant", "content": "..."}]
+  status                    WhatsAppConversationStatus @default(active)
+  transferredToHumanAt      DateTime? @map("transferred_to_human_at")
+  transferredToAttendant    User?    @relation("ConversationsTransferredTo", fields: [transferredToAttendantId], references: [id], onDelete: SetNull)
+  transferredToAttendantId  String?  @map("transferred_to_attendant_id")
+  attendantNotes            String?  @map("attendant_notes")
+  metadata                  Json?
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  // Relações
+  humanTickets              WhatsAppHumanTicket[]
+
+  @@index([leadId])
+  @@index([status])
+  @@index([transferredToAttendantId])
+  @@map("whatsapp_conversations")
+}
+
+// Fila de atendimento humano
+model WhatsAppHumanTicket {
+  id                        String   @id @default(cuid())
+  conversationId            String   @map("conversation_id")
+  conversation              WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  leadId                    String   @map("lead_id")
+  lead                      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  reason                    String?
+  priority                  WhatsAppHumanTicketPriority @default(normal)
+  status                    WhatsAppHumanTicketStatus @default(pending)
+  assignedToAttendant       User?    @relation("HumanTicketsAssignedTo", fields: [assignedToAttendantId], references: [id], onDelete: SetNull)
+  assignedToAttendantId     String?  @map("assigned_to_attendant_id")
+  assignedAt                DateTime? @map("assigned_at")
+  resolvedAt                DateTime? @map("resolved_at")
+  resolutionNotes           String?  @map("resolution_notes")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([assignedToAttendantId])
+  @@index([priority])
+  @@map("whatsapp_human_tickets")
+}
+
+// Configurações de integrações WhatsApp
+model WhatsAppIntegration {
+  id                String   @id @default(cuid())
+  platform          WhatsAppPlatform
+  name              String?
+  active            Boolean  @default(true)
+  apiKey            String?  @map("api_key")
+  apiSecret         String?  @map("api_secret")
+  instanceId        String?  @map("instance_id")
+  phoneNumberId     String?  @map("phone_number_id")
+  channelId         String?  @map("channel_id")
+  webhookUrl        String?  @map("webhook_url")
+  webhookSecret     String?  @map("webhook_secret")
+  settings          Json?
+  lastSyncAt        DateTime? @map("last_sync_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([platform, active])
+  @@map("whatsapp_integrations")
+}

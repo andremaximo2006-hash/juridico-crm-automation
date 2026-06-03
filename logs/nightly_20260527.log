@@ -1,0 +1,16 @@
+[Wed May 27 22:20:07 -03 2026] Iniciando sessão noturna — CRM Jurídico
+[Wed May 27 22:20:07 -03 2026] Usando: /Users/andreluis/.vscode/extensions/anthropic.claude-code-2.1.153-darwin-arm64/resources/native-binary/claude
+**Sessão Noite 1 concluída com sucesso.**
+
+## Resumo do que foi implementado
+
+**1.1 Skeleton loading** — `src/components/ui/Skeleton.tsx` criado com 4 variantes (`Skeleton`, `KanbanSkeleton`, `TableSkeleton`, `CardsSkeleton`). Todos os "Carregando..." substituídos em leads, clientes, financeiro e operacional.
+
+**1.2 Validação Zod** — `src/lib/schemas.ts` criado. Rotas POST de `/api/leads`, `/api/clientes` e `/api/financeiro` agora retornam HTTP 422 com lista de erros em caso de dados inválidos.
+
+**1.3 Limite de upload 5MB** — Verificação adicionada em `/api/clientes/import` e `/api/operacional/import`. Retorna HTTP 413 se arquivo exceder o limite.
+
+**1.4 Drawer detalhe do lead** — `LeadDetailDrawer.tsx` criado com dados completos, ações rápidas (ligar/WhatsApp) e timeline. Rota `GET /api/leads/[id]/timeline` criada. Clicar em qualquer card do Kanban abre o drawer.
+
+**Deploy:** build OK, rsync OK, PM2 online, site retornou 307. Commit `2fca382` na branch main. 4 tarefas criadas no ClickUp como "complete".
+[Wed May 27 22:27:23 -03 2026] Sessão encerrada. Exit code: 0
