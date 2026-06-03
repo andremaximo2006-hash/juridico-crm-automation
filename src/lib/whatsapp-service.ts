@@ -187,8 +187,8 @@ interface SuperAgentResult {
 }
 
 /**
- * Chama o Super Agent Python via API local ou subprocess
- * TODO: Implementar comunicação com backend Python
+ * Chama o Super Agent Python via API REST
+ * Conecta ao servidor FastAPI em localhost:8000
  */
 async function callSuperAgent({
   leadId,
@@ -204,85 +204,75 @@ async function callSuperAgent({
   legalArea: string;
 }): Promise<SuperAgentResult> {
   try {
-    // ============ OPÇÃO 1: Via API REST (recomendado para produção) ============
-    // const response = await fetch("http://localhost:8000/api/agent/chat", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({
-    //     lead_id: leadId,
-    //     user_message: userMessage,
-    //     system_prompt: systemPrompt,
-    //     conversation_history: conversationHistory,
-    //     legal_area: legalArea,
-    //   }),
-    // });
-    // const result = await response.json();
-    // return result;
+    // ============ CHAMAR BACKEND PYTHON REAL ============
+    const pythonBackendUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
-    // ============ OPÇÃO 2: Simular resposta (para testes sem Python) ============
-    // Simulação para testes até o backend Python estar pronto
-    logger.info("[SuperAgent] Simulando resposta (Python não conectado)", {
+    logger.info("[SuperAgent] Chamando backend Python", {
+      leadId,
+      legalArea,
+      url: pythonBackendUrl,
+    });
+
+    const response = await fetch(`${pythonBackendUrl}/process-message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lead_id: leadId,
+        phone: "",
+        message: userMessage,
+        legal_area: legalArea,
+        conversation_history: conversationHistory,
+        system_prompt: systemPrompt,
+      }),
+      timeout: 30000, // 30 segundos
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    logger.info("[SuperAgent] Resposta recebida do backend", {
+      leadId,
+      status: result.status,
+      responseLength: result.response.length,
+    });
+
+    return {
+      response: result.response,
+      conversationHistory: result.conversation_history || conversationHistory,
+      status: result.status || "continued",
+      reason: result.reason,
+      priority: result.priority,
+    };
+  } catch (error) {
+    logger.error("[SuperAgent] Erro ao chamar backend Python", {
+      error: String(error),
       leadId,
       legalArea,
     });
 
-    // Adicionar mensagem do usuário ao histórico
-    conversationHistory.push({
-      role: "user",
-      content: userMessage,
-    });
-
-    // Simular resposta baseado na área jurídica
-    let simulatedResponse = "";
-
-    if (legalArea === "previdenciario") {
-      simulatedResponse = `Obrigado por entrar em contato conosco.\n\nVejo que você tem interesse em Direito Previdenciário. Para melhor atendê-lo, vou transferir sua solicitação para um especialista em benefícios previdenciários que poderá avaliar seu caso em detalhes.\n\nUm atendente especializadoentraráconsígoembreve. Aguarde por favor.`;
-    } else if (legalArea === "familia") {
-      simulatedResponse = `Olá! Entendi que você precisa de orientação em Direito da Família.\n\nVou transferir seu caso para um especialista que poderá analisar sua situação com atenção e discretion.\n\nEm breve, um atendente entrarará em contato. Agradecemos sua paciência.`;
-    } else {
-      simulatedResponse = `Agradeço por sua mensagem. Vou transferir você para um especialista que poderá ajudá-lo da melhor forma possível.\n\nEm breve, você será atendido por um profissional qualificado.`;
-    }
-
-    // Adicionar resposta ao histórico
-    conversationHistory.push({
-      role: "assistant",
-      content: simulatedResponse,
-    });
-
-    // Simular decisão de transferência
-    // Em produção, isso virá do loop agêntico do Python
-    const shouldTransfer = true; // Simular transferência
-
-    return {
-      response: simulatedResponse,
-      conversationHistory,
-      status: shouldTransfer ? "transferred_to_human" : "continued",
-      reason: shouldTransfer
-        ? `Cliente transferido para especialista em ${legalArea}`
-        : undefined,
-      priority: "normal",
-    };
-  } catch (error) {
-    logger.error("[SuperAgent] Erro ao chamar Super Agent", error);
-
     // Fallback: resposta padrão e transferência para humano
+    // (Quando backend está offline)
     conversationHistory.push({
       role: "user",
       content: userMessage,
     });
 
+    const fallbackMessage =
+      "Desculpe, tive uma dificuldade técnica. Vou transferir você para um atendente que poderá ajudá-lo.";
+
     conversationHistory.push({
       role: "assistant",
-      content:
-        "Desculpe, tive uma dificuldade técnica. Vou transferir você para um atendente que poderá ajudá-lo.",
+      content: fallbackMessage,
     });
 
     return {
-      response:
-        "Desculpe, tive uma dificuldade técnica. Vou transferir você para um atendente que poderá ajudá-lo.",
+      response: fallbackMessage,
       conversationHistory,
       status: "transferred_to_human",
-      reason: "Erro ao processar mensagem na IA",
+      reason: "Erro ao conectar ao Super Agent Python",
       priority: "normal",
     };
   }
