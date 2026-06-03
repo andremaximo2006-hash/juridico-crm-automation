@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/Header";
+import { PrevisibilidadeTab } from "@/components/gerencial/PrevisibilidadeTab";
 import { useState } from "react";
 import { TrendingUp, Users, AlertTriangle } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function GerencialPage() {
             { id: "performance", label: "📊 Performance por Advogado" },
             { id: "churn", label: "⚠️ Alerta de Churn" },
             { id: "rentabilidade", label: "📈 Rentabilidade por Área" },
+            { id: "previsibilidade", label: "🔮 Previsibilidade de Receitas" },
           ].map((t) => (
             <button
               key={t.id}
@@ -100,6 +102,8 @@ export default function GerencialPage() {
             </p>
           </div>
         )}
+
+        {tab === "previsibilidade" && <PrevisibilidadeTab />}
       </div>
     </div>
   );

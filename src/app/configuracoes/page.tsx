@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
+import { UsersTab } from "@/components/configuracoes/UsersTab";
 import { Settings, Save, X } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -38,6 +39,7 @@ export default function ConfiguracoesPage() {
             { id: "notificacoes", label: "🔔 Notificações" },
             { id: "integracao", label: "🔗 Integrações" },
             { id: "seguranca", label: "🔐 Segurança" },
+            { id: "usuarios", label: "👥 Usuários" },
           ].map((t) => (
             <button
               key={t.id}
@@ -218,6 +220,8 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           )}
+
+          {tab === "usuarios" && <UsersTab />}
         </div>
       </div>
     </div>

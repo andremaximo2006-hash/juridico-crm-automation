@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { hasMenuAccess as checkMenuAccess } from "./menu-access";
 
 export interface SessionPayload {
   userId: string;
@@ -59,5 +60,8 @@ export async function destroySession(): Promise<void> {
 export function canAccessFinanceiro(role: SessionPayload["role"]): boolean {
   return role === "admin" || role === "financeiro";
 }
+
+// Re-export menu access helpers for convenience
+export { hasMenuAccess, MENU_ACCESS } from "./menu-access";
 
 export const COOKIE_NAME_EXPORT = COOKIE_NAME;

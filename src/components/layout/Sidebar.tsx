@@ -5,43 +5,56 @@ import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, UserCheck, DollarSign, BarChart3, Settings, Scale, LogOut, ClipboardList, Sun, Moon, Menu, X, Calendar, Bot, TrendingUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { hasMenuAccess } from "@/lib/menu-access";
 
 interface NavItem {
   href?: string;
   icon: any;
   label: string;
-  roles: string[];
+  menuId?: string; // ID único do menu para controle de acesso
+  roles?: string[]; // Mantido para compatibilidade
   submenu?: NavItem[];
 }
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { href: "/", icon: LayoutDashboard, label: "Dashboard", roles: ["admin", "financeiro", "padrao"] },
+  { href: "/", icon: LayoutDashboard, label: "Dashboard", menuId: "dashboard", roles: ["admin", "financeiro", "padrao"] },
   {
     icon: Users,
     label: "Leads",
+    menuId: "leads",
     roles: ["admin", "padrao"],
     submenu: [
-      { href: "/leads", icon: TrendingUp, label: "Funil de Leads", roles: ["admin", "padrao"] },
-      { href: "/leads/configuracoes", icon: Settings, label: "Configurações", roles: ["admin"] },
+      { href: "/leads", icon: TrendingUp, label: "Funil de Leads", menuId: "leads", roles: ["admin", "padrao"] },
+      { href: "/leads/configuracoes", icon: Settings, label: "Configurações", menuId: "leads-config", roles: ["admin"] },
     ]
   },
   {
     icon: Bot,
     label: "IA Atendimento",
-    roles: ["admin"],
+    menuId: "ia-atendimento",
+    roles: ["admin", "padrao"],
     submenu: [
-      { href: "/ia/roteiros", icon: Settings, label: "Roteiros", roles: ["admin"] },
-      { href: "/ia/conversas", icon: Users, label: "Conversas", roles: ["admin"] },
-      { href: "/ia/atendimento-humano", icon: UserCheck, label: "Atendimento Humano", roles: ["admin"] },
+      { href: "/ia/roteiros", icon: Settings, label: "Roteiros", menuId: "ia-roteiros", roles: ["admin"] },
+      { href: "/ia/conversas", icon: Users, label: "Conversas", menuId: "ia-conversas", roles: ["admin"] },
+      { href: "/ia/atendimento-humano", icon: UserCheck, label: "Atendimento Humano", menuId: "ia-atendimento-humano", roles: ["admin"] },
     ]
   },
-  { href: "/clientes", icon: UserCheck, label: "Clientes", roles: ["admin", "padrao"] },
-  { href: "/operacional", icon: ClipboardList, label: "Operacional", roles: ["admin", "padrao"] },
-  { href: "/financeiro", icon: DollarSign, label: "Financeiro", roles: ["admin", "financeiro"] },
-  { href: "/gerencial", icon: TrendingUp, label: "Gerencial", roles: ["admin"] },
-  { href: "/agenda", icon: Calendar, label: "Agenda", roles: ["admin", "padrao"] },
-  { href: "/marketing", icon: BarChart3, label: "Marketing", roles: ["admin"] },
-  { href: "/configuracoes", icon: Settings, label: "Configurações", roles: ["admin"] },
+  { href: "/clientes", icon: UserCheck, label: "Clientes", menuId: "clientes", roles: ["admin", "padrao"] },
+  { href: "/operacional", icon: ClipboardList, label: "Operacional", menuId: "operacional", roles: ["admin", "padrao"] },
+  { href: "/financeiro", icon: DollarSign, label: "Financeiro", menuId: "financeiro", roles: ["admin", "financeiro"] },
+  {
+    icon: TrendingUp,
+    label: "Gerencial",
+    menuId: "gerencial",
+    roles: ["admin"],
+    submenu: [
+      { href: "/gerencial", icon: TrendingUp, label: "📊 Dashboard", menuId: "gerencial", roles: ["admin"] },
+      { href: "/gerencial/previsibilidade", icon: TrendingUp, label: "🔮 Previsibilidade", menuId: "previsibilidade", roles: ["admin"] },
+    ]
+  },
+  { href: "/agenda", icon: Calendar, label: "Agenda", menuId: "agenda", roles: ["admin", "padrao"] },
+  { href: "/marketing", icon: BarChart3, label: "Marketing", menuId: "marketing", roles: ["admin"] },
+  { href: "/configuracoes", icon: Settings, label: "Configurações", menuId: "configuracoes", roles: ["admin"] },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -77,7 +90,21 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
     localStorage.setItem("crm-theme", next ? "dark" : "light");
   }
 
-  const navItems = ALL_NAV_ITEMS.filter((item) => item.roles.includes(userRole));
+  // Filtrar menus baseado em role usando hasMenuAccess
+  const navItems = ALL_NAV_ITEMS.filter((item) => {
+    const menuId = item.menuId || item.label?.toLowerCase().replace(/\s+/g, "-");
+    return hasMenuAccess(userRole as any, menuId);
+  }).map((item) => {
+    // Filtrar submenus também se necessário
+    if (item.submenu) {
+      const filteredSubmenu = item.submenu.filter((subitem) => {
+        const subMenuId = subitem.menuId || subitem.label?.toLowerCase().replace(/\s+/g, "-");
+        return subitem.roles ? subitem.roles.includes(userRole) : true;
+      });
+      return { ...item, submenu: filteredSubmenu };
+    }
+    return item;
+  });
 
   function toggleSubmenu(label: string) {
     setExpandedMenus(prev =>
