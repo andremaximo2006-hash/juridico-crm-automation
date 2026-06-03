@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from "next/server";
+import { asaasService } from "@/lib/asaas-service";
+import { logger } from "@/lib/logger";
+
+/**
+ * GET /api/asaas/payments/:id
+ * Obter detalhes de uma cobrança
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    logger.info("[API] Obtendo cobrança Asaas", { paymentId: params.id });
+
+    const payment = await asaasService.getPayment(params.id);
+
+    if (!payment) {
+      return NextResponse.json(
+        { error: "Cobrança não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: payment });
+  } catch (error) {
+    logger.error("[API] Erro ao obter cobrança", error);
+    return NextResponse.json(
+      { error: "Erro ao obter cobrança" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/asaas/payments/:id
+ * Cancelar cobrança
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    logger.info("[API] Cancelando cobrança Asaas", { paymentId: params.id });
+
+    const success = await asaasService.cancelPayment(params.id);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: "Erro ao cancelar cobrança" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    logger.error("[API] Erro ao cancelar cobrança", error);
+    return NextResponse.json(
+      { error: "Erro ao cancelar cobrança" },
+      { status: 500 }
+    );
+  }
+}
