@@ -10,6 +10,7 @@ export const MENU_ACCESS: Record<UserRole, string[]> = {
     "operacional",
     "financeiro",
     "gerencial",
+    "previsibilidade",
     "agenda",
     "marketing",
     "configuracoes",

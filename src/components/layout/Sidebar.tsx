@@ -83,6 +83,20 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
+  // Auto-expandir menus que têm um item ativo
+  useEffect(() => {
+    const itemsToExpand = ALL_NAV_ITEMS
+      .filter(item => item.submenu && item.submenu.some(sub => isActive(sub.href)))
+      .map(item => item.label);
+
+    if (itemsToExpand.length > 0) {
+      setExpandedMenus(prev => {
+        const newExpanded = new Set([...prev, ...itemsToExpand]);
+        return Array.from(newExpanded);
+      });
+    }
+  }, [pathname]);
+
   function toggleDark() {
     const next = !dark;
     setDark(next);
