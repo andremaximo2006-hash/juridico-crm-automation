@@ -39,13 +39,12 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    logger.info("[API] Cancelando cobrança Asaas", { paymentId: id });
+    logger.info("[API] Cancelando cobrança Asaas", { paymentId: params.id });
 
-    const success = await asaasService.cancelPayment(id);
+    const success = await asaasService.cancelPayment(params.id);
 
     if (!success) {
       return NextResponse.json(

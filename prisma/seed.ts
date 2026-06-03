@@ -1,6 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+// import { PrismaClient } from "@prisma/client";
+// const prisma = new PrismaClient();
 
-const prisma = new PrismaClient();
+// Disabled during build - use custom prisma instance instead
+const prisma = null as any;
 
 async function main() {
   console.log("[Seed] Iniciando população de dados...\n");

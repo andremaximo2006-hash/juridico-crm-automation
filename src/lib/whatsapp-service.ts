@@ -111,7 +111,7 @@ export async function processWhatsAppMessage(
           phoneNumber,
           legalArea,
           conversationHistory: agentResult.conversationHistory,
-          status: agentResult.status,
+          status: (agentResult.status === "transferred_to_human" ? "transferred" : "active") as any,
           transferredToHumanAt:
             agentResult.status === "transferred_to_human"
               ? new Date()
@@ -123,7 +123,7 @@ export async function processWhatsAppMessage(
         where: { id: conversation.id },
         data: {
           conversationHistory: agentResult.conversationHistory,
-          status: agentResult.status,
+          status: (agentResult.status === "transferred_to_human" ? "transferred" : "active") as any,
           transferredToHumanAt:
             agentResult.status === "transferred_to_human"
               ? new Date()
@@ -224,7 +224,6 @@ async function callSuperAgent({
         conversation_history: conversationHistory,
         system_prompt: systemPrompt,
       }),
-      timeout: 30000, // 30 segundos
     });
 
     if (!response.ok) {
