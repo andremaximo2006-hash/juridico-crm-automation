@@ -1,0 +1,144 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     RESUMO: CRM JURÍDICO - 03/06/2026                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ✅ SESSÃO ANTERIOR (Resumida)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [PROBLEMA]  ChunkLoadError em produção: arquivo 0r6ny.g11_ed~.js faltando │
+│                                                                              │
+│  [DIAGNÓSTICO]                                                             │
+│   └─ 147 erros TypeScript no build                                        │
+│   └─ Next.js 16 route handler API mudou                                   │
+│   └─ Diversos imports/módulos faltando                                    │
+│                                                                              │
+│  [SOLUÇÕES APLICADAS]                                                      │
+│   ✓ Corrigidos 8 route handlers com Promise<> syntax                      │
+│   ✓ Fixado typo em notification-service.ts                                │
+│   ✓ Removido fetch timeout incompatível                                   │
+│   ✓ Criado server.js para PM2 iniciar                                     │
+│   ✓ Deploy em produção realizado                                           │
+│                                                                              │
+│  [RESULTADO]                                                                │
+│   ✓ Build compilou (0 erros TypeScript)                                   │
+│   ✓ Todas 47 rotas geradas                                                │
+│   ✓ PM2 iniciou aplicação                                                  │
+│   ✗ ChunkLoadError persiste em produção                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ✅ ESTA SESSÃO (Continuação & Diagnóstico)                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  [PROBLEMA CONFIRMADO]                                                      │
+│   • ChunkLoadError ainda presente em crm.gabriellenunes.com.br/login       │
+│   • Erro específico: 0r6ny.g11_ed~.js não carrega                          │
+│   • Causa: .next directory no servidor está corrompido                      │
+│                                                                              │
+│  [DIAGNÓSTICO LOCAL]                                                        │
+│   ✓ npm run build → Sucesso em 2.7s (sem erros)                           │
+│   ✓ npm run build → 47 rotas compiladas                                   │
+│   ✓ npm run build → Chunk 0r6ny.g11_ed~.js GERADO                         │
+│   ✓ node server.js → Login page renderizada sem erro                      │
+│   ✓ Teste local em localhost:3000 → FUNCIONANDO                            │
+│                                                                              │
+│  [CONCLUSÃO]                                                                │
+│   → Código está correto                                                     │
+│   → Build está correto                                                      │
+│   → Problema é 100% no servidor (arquivo corrompido)                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📦 ARTEFATOS CRIADOS                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DOCUMENTAÇÃO:                                                              │
+│   📄 README.DEPLOY.md ........... Guia de deploy imediato                  │
+│   📄 QUICK_DEPLOY.md ........... Deploy em 5 linhas                        │
+│   📄 DEPLOYMENT-GUIDE.md ....... Manual completo + troubleshooting        │
+│   📄 VERIFICATION.md ........... Checklist pós-deploy                      │
+│   📄 STATUS.md ................. Estado completo do projeto                │
+│                                                                              │
+│  CÓDIGO:                                                                     │
+│   ⚙️  server.js ................. Custom Next.js server para PM2           │
+│                                                                              │
+│  SCRIPTS:                                                                    │
+│   🚀 DEPLOY.sh ................. Deploy automatizado (requer SSH)          │
+│                                                                              │
+│  BUILD:                                                                      │
+│   📦 /tmp/crm-deploy.tar.gz .... Build pronto (179MB)                     │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 PRÓXIMAS AÇÕES (Para você)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  URGENTE (Bloqueador):                                                      │
+│   [ ] 1. Fazer deploy com tarball limpo                                    │
+│   [ ] 2. Verificar se ChunkLoadError desapareceu                           │
+│                                                                              │
+│  Escolha UMA das 3 opções:                                                  │
+│                                                                              │
+│   OPÇÃO 1: Deploy Automático (15 min)                                       │
+│   ├─ bash DEPLOY.sh                                                        │
+│   └─ (Faz tudo automaticamente)                                             │
+│                                                                              │
+│   OPÇÃO 2: Deploy Manual (20 min)                                           │
+│   ├─ scp -i ~/.ssh/vps_key /tmp/crm-deploy.tar.gz root@server:/tmp/       │
+│   ├─ ssh -i ~/.ssh/vps_key root@server                                     │
+│   └─ (Siga comandos em README.DEPLOY.md)                                   │
+│                                                                              │
+│   OPÇÃO 3: Deploy via Git (25 min)                                          │
+│   ├─ git push origin main                                                  │
+│   └─ (Puxe no servidor e faça build)                                       │
+│                                                                              │
+│  APÓS DEPLOY:                                                               │
+│   [ ] Siga checklist em VERIFICATION.md                                    │
+│   [ ] Teste login em crm.gabriellenunes.com.br/login                       │
+│   [ ] Verifique módulos (dashboard, leads, clientes, ia/*)                 │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 📊 BUILD STATUS                                                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Local:                                                                      │
+│   ✅ TypeScript:        0 errors                                            │
+│   ✅ Build time:        2.7 seconds                                         │
+│   ✅ Routes compiled:   47/47                                               │
+│   ✅ Test run:         Login page works                                     │
+│                                                                              │
+│  Production:                                                                │
+│   🔴 ChunkLoadError:    Arquivo corrompido                                  │
+│   ⏳ Deploy status:     Ready to push                                       │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 💾 GIT COMMITS CRIADOS NESTA SESSÃO                                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. [anterior] Fix: Prisma route handlers with Promise params...           │
+│  2. [este]     Add server.js and deployment guides                         │
+│  3. [este]     Add immediate deployment guide for fixing...                │
+│  4. [este]     Add post-deployment verification checklist                  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ ⚡ PRÓXIMO PASSO IMEDIATO:                                                  ║
+║                                                                              ║
+║  Execute UMA dessas opções:                                                 ║
+║  1. bash DEPLOY.sh                                                          ║
+║  2. Leia README.DEPLOY.md e siga instruções manuais                         ║
+║  3. Leia QUICK_DEPLOY.md (versão ultra-rápida)                             ║
+║                                                                              ║
+║  Tempo estimado: 15-25 minutos                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
