@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Copy } from "lucide-react";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
 
 interface Fechamento {
   id: string;
@@ -60,7 +62,38 @@ const SITUACOES = [
 ];
 
 export function FechamentosTab() {
-  const [fechamentos, setFechamentos] = useState<Fechamento[]>(FECHAMENTOS_EXEMPLO);
+  const [fechamentos, setFechamentos] = useLocalStorage<Fechamento[]>(
+    "previsibilidade_fechamentos",
+    FECHAMENTOS_EXEMPLO
+  );
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({
+    open: false,
+    id: "",
+  });
+
+  const handleAdd = (data: Omit<Fechamento, "id">) => {
+    const newFechamento: Fechamento = {
+      ...data,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    setFechamentos([...fechamentos, newFechamento]);
+  };
+
+  const handleDelete = (id: string) => {
+    setFechamentos(fechamentos.filter((f) => f.id !== id));
+  };
+
+  const handleDuplicate = (id: string) => {
+    const fechToDuplicate = fechamentos.find((f) => f.id === id);
+    if (fechToDuplicate) {
+      const newFechamento: Fechamento = {
+        ...fechToDuplicate,
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        obs: `${fechToDuplicate.obs} (Cópia)`,
+      };
+      setFechamentos([...fechamentos, newFechamento]);
+    }
+  };
 
   const totalFechamentos = fechamentos.length;
   const totalHonorarios = fechamentos.reduce((sum, f) => sum + f.honorarios, 0);
@@ -87,7 +120,20 @@ export function FechamentosTab() {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           📋 CONTROLE DE PRAZOS E STATUS
         </h3>
-        <button className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <button
+          onClick={() => handleAdd({
+            data: new Date().toISOString().split('T')[0],
+            cliente: "",
+            produto: "BPC/LOAS",
+            area: "Previdenciário",
+            canal: "Meta Ads",
+            setor: "Triagem",
+            obs: "",
+            situacao: "Em Andamento",
+            honorarios: 0,
+          })}
+          className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
           <Plus className="h-4 w-4" /> Novo Contrato
         </button>
       </div>
@@ -128,9 +174,23 @@ export function FechamentosTab() {
                 <td className="px-4 py-3 text-right font-medium text-green-600">
                   {fech.honorarios ? `R$ ${fech.honorarios.toLocaleString("pt-BR")}` : "—"}
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <button className="text-red-600 hover:text-red-700">
+                <td className="px-4 py-3 text-center space-x-2">
+                  <button className="inline text-blue-600 hover:text-blue-700" title="Editar">
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm({ open: true, id: fech.id })}
+                    className="inline text-red-600 hover:text-red-700"
+                    title="Deletar"
+                  >
                     <Trash2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDuplicate(fech.id)}
+                    className="inline text-green-600 hover:text-green-700"
+                    title="Duplicar"
+                  >
+                    <Copy className="h-4 w-4" />
                   </button>
                 </td>
               </tr>
@@ -138,6 +198,17 @@ export function FechamentosTab() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmacaoDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        title="Deletar Contrato?"
+        description="Esta ação não pode ser desfeita. O contrato será permanentemente removido."
+        onConfirm={() => {
+          handleDelete(deleteConfirm.id);
+          setDeleteConfirm({ open: false, id: "" });
+        }}
+      />
 
       <p className="text-sm text-slate-600 dark:text-slate-400">
         <strong>{totalFechamentos} contratos reais</strong> · Rastreamento desde entrada até conclusão
