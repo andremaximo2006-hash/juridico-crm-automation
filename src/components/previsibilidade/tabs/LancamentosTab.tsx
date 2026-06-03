@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Copy } from "lucide-react";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { AdicionarLancamentoModal } from "../modals/AdicionarLancamentoModal";
+import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
 
 interface Lancamento {
   id: string;
@@ -35,42 +38,86 @@ const LANCAMENTOS_EXEMPLO: Lancamento[] = [
     atendimentos: 15,
     contratos: 12,
   },
-  {
-    id: "2",
-    mes: "2026-05",
-    canal: "Google Ads",
-    produto: "Aposentadoria",
-    nomeCampanha: "[Aposentadoria] Search 05/2026",
-    status: "Ativa",
-    investimento: 3000,
-    impressoes: 28000,
-    cliques: 1680,
-    leads: 168,
-    leadsQualif: 145,
-    atendimentos: 36,
-    contratos: 28,
-  },
 ];
 
 export function LancamentosTab() {
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>(LANCAMENTOS_EXEMPLO);
-  const [showForm, setShowForm] = useState(false);
+  const [lancamentos, setLancamentos] = useLocalStorage<Lancamento[]>(
+    "previsibilidade_lancamentos",
+    LANCAMENTOS_EXEMPLO
+  );
 
-  // Cálculos automáticos
+  const [openModal, setOpenModal] = useState(false);
+  const [editingLancamento, setEditingLancamento] = useState<Lancamento | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({
+    open: false,
+    id: "",
+  });
+
+  // Handlers
+  const handleAddLancamento = (data: Omit<Lancamento, "id">) => {
+    const newLancamento: Lancamento = {
+      ...data,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    setLancamentos([...lancamentos, newLancamento]);
+  };
+
+  const handleEditLancamento = (data: Omit<Lancamento, "id">) => {
+    if (editingLancamento) {
+      setLancamentos(
+        lancamentos.map((l) =>
+          l.id === editingLancamento.id ? { ...l, ...data } : l
+        )
+      );
+      setEditingLancamento(null);
+    }
+  };
+
+  const handleDeleteLancamento = (id: string) => {
+    setLancamentos(lancamentos.filter((l) => l.id !== id));
+  };
+
+  const handleDuplicateLancamento = (id: string) => {
+    const lancamentoToDuplicate = lancamentos.find((l) => l.id === id);
+    if (lancamentoToDuplicate) {
+      const newLancamento: Lancamento = {
+        ...lancamentoToDuplicate,
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        nomeCampanha: `${lancamentoToDuplicate.nomeCampanha} (Cópia)`,
+      };
+      setLancamentos([...lancamentos, newLancamento]);
+    }
+  };
+
+  const handleSaveLancamento = (data: Omit<Lancamento, "id">) => {
+    if (editingLancamento) {
+      handleEditLancamento(data);
+    } else {
+      handleAddLancamento(data);
+    }
+    setOpenModal(false);
+  };
+
+  const openEditLancamento = (lancamento: Lancamento) => {
+    setEditingLancamento(lancamento);
+    setOpenModal(true);
+  };
+
+  // Cálculos
   const calcularCPM = (investimento: number, impressoes: number) => {
-    return impressoes > 0 ? ((investimento / impressoes) * 1000).toFixed(2) : "0.00";
+    return impressoes > 0 ? (investimento / (impressoes / 1000)).toFixed(2) : "0";
   };
 
   const calcularCPC = (investimento: number, cliques: number) => {
-    return cliques > 0 ? (investimento / cliques).toFixed(2) : "0.00";
+    return cliques > 0 ? (investimento / cliques).toFixed(2) : "0";
   };
 
   const calcularCTR = (cliques: number, impressoes: number) => {
-    return impressoes > 0 ? ((cliques / impressoes) * 100).toFixed(2) : "0.00";
+    return impressoes > 0 ? ((cliques / impressoes) * 100).toFixed(2) : "0";
   };
 
   const calcularCPL = (investimento: number, leads: number) => {
-    return leads > 0 ? (investimento / leads).toFixed(2) : "0.00";
+    return leads > 0 ? (investimento / leads).toFixed(2) : "0";
   };
 
   return (
@@ -84,59 +131,17 @@ export function LancamentosTab() {
           <p className="text-sm text-slate-600 dark:text-slate-400">Campanhas de tráfego pago</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setEditingLancamento(null);
+            setOpenModal(true);
+          }}
           className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" /> Nova Campanha
         </button>
       </div>
 
-      {/* Seção A: IDENTIFICAÇÃO */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h4 className="mb-4 font-semibold text-slate-900 dark:text-white">Seção A: IDENTIFICAÇÃO</h4>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">Mês</label>
-            <input
-              type="month"
-              className="mt-1 w-full rounded border border-slate-300 bg-yellow-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-yellow-900/20"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">Canal</label>
-            <select className="mt-1 w-full rounded border border-slate-300 bg-yellow-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-yellow-900/20">
-              <option>Meta Ads</option>
-              <option>Google Ads</option>
-              <option>TikTok Ads</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">Produto</label>
-            <select className="mt-1 w-full rounded border border-slate-300 bg-yellow-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-yellow-900/20">
-              <option>BPC/LOAS</option>
-              <option>Aposentadoria</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">Nome da Campanha</label>
-            <input
-              type="text"
-              placeholder="Ex: [BPC/LOAS] [AVC] 05/2026"
-              className="mt-1 w-full rounded border border-slate-300 bg-yellow-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-yellow-900/20"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">Status</label>
-            <select className="mt-1 w-full rounded border border-slate-300 bg-yellow-50 px-3 py-2 text-sm dark:border-slate-600 dark:bg-yellow-900/20">
-              <option>Ativa</option>
-              <option>Pausada</option>
-              <option>Encerrada</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Seção B: DADOS REAIS */}
+      {/* Tabela de Lançamentos */}
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <table className="w-full text-sm">
           <thead>
@@ -160,33 +165,51 @@ export function LancamentosTab() {
                   <div className="font-medium text-slate-900 dark:text-white">{lancamento.nomeCampanha}</div>
                   <div className="text-xs text-slate-500">{lancamento.mes} • {lancamento.canal}</div>
                 </td>
-                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10">
+                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">
                   R$ {lancamento.investimento.toLocaleString("pt-BR")}
                 </td>
-                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10">
+                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">
                   {lancamento.impressoes.toLocaleString("pt-BR")}
                 </td>
-                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10">
+                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">
                   {lancamento.cliques.toLocaleString("pt-BR")}
                 </td>
-                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10">
+                <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">
                   {lancamento.leads}
                 </td>
-                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium">
+                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
                   R$ {calcularCPM(lancamento.investimento, lancamento.impressoes)}
                 </td>
-                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium">
+                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
                   R$ {calcularCPC(lancamento.investimento, lancamento.cliques)}
                 </td>
-                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium">
+                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
                   {calcularCTR(lancamento.cliques, lancamento.impressoes)}%
                 </td>
-                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium">
+                <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
                   R$ {calcularCPL(lancamento.investimento, lancamento.leads)}
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <button className="text-red-600 hover:text-red-700">
+                <td className="px-4 py-3 text-center space-x-2">
+                  <button
+                    onClick={() => openEditLancamento(lancamento)}
+                    className="inline text-blue-600 hover:text-blue-700"
+                    title="Editar"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm({ open: true, id: lancamento.id })}
+                    className="inline text-red-600 hover:text-red-700"
+                    title="Deletar"
+                  >
                     <Trash2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDuplicateLancamento(lancamento.id)}
+                    className="inline text-green-600 hover:text-green-700"
+                    title="Duplicar"
+                  >
+                    <Copy className="h-4 w-4" />
                   </button>
                 </td>
               </tr>
@@ -194,6 +217,29 @@ export function LancamentosTab() {
           </tbody>
         </table>
       </div>
+
+      {/* Modals */}
+      <AdicionarLancamentoModal
+        open={openModal}
+        onOpenChange={(open) => {
+          setOpenModal(open);
+          if (!open) setEditingLancamento(null);
+        }}
+        onSave={handleSaveLancamento}
+        editingLancamento={editingLancamento}
+        produtos={["BPC/LOAS", "Aposentadoria"]}
+      />
+
+      <ConfirmacaoDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        title="Deletar Campanha?"
+        description="Esta ação não pode ser desfeita. A campanha será permanentemente removida."
+        onConfirm={() => {
+          handleDeleteLancamento(deleteConfirm.id);
+          setDeleteConfirm({ open: false, id: "" });
+        }}
+      />
 
       {/* Info */}
       <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900">
