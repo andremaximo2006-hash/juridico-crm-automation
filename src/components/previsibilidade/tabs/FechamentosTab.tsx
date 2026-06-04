@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Copy, Loader } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Edit2, Trash2, Copy, Loader, ChevronDown, ChevronRight, X } from "lucide-react";
 import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
 
 interface Fechamento {
@@ -27,31 +27,41 @@ const SITUACOES = [
   "semViabilidade",
 ];
 
-// Função auxiliar para remover acentos e normalizar texto
-const normalizeText = (text: string): string => {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // Remove acentos
-    .toLowerCase()
-    .replace(/ /g, ''); // Remove espaços
+// Função para formatar valor monetário em formato brasileiro
+const formatarMoeda = (valor: number | null | undefined): string => {
+  if (!valor && valor !== 0) return "—";
+  const numValue = typeof valor === 'string' ? parseFloat(valor) : valor;
+  if (isNaN(numValue)) return "—";
+  return `R$ ${numValue.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
-// Mapa de conversão para valores do localStorage → enums da API
-const CONVERSAO_AREA = {
-  'previdenciario': 'previdenciario',
-  'trabalhista': 'trabalhista',
-  'familia': 'familia',
-  'civil': 'civil',
-  'civel': 'civil', // Alternativa com acento/v extra
-  'outro': 'outro',
+// Função para formatar data (remove timestamp)
+const formatarData = (data: string): string => {
+  if (!data) return "—";
+  return data.split('T')[0]; // Remove timestamp
 };
 
-const CONVERSAO_SITUACAO = {
-  'beneficioconcedido': 'beneficioConcedido',
-  'beneficionegado': 'beneficioNegado',
-  'emandamento': 'emAndamento',
-  'semviabilidade': 'semViabilidade',
-};
+interface Filtros {
+  cliente: string;
+  situacao: string;
+  canal: string;
+  dataInicio: string;
+  dataFim: string;
+}
+
+interface YearMonthData {
+  year: number;
+  months: {
+    month: number;
+    monthName: string;
+    contratos: Fechamento[];
+    total: number;
+    totalHonorarios: number;
+  }[];
+}
 
 export function FechamentosTab() {
   const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
@@ -61,6 +71,23 @@ export function FechamentosTab() {
     open: false,
     id: "",
   });
+
+  // Estados de expansão
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  // Estados de filtro
+  const [filtros, setFiltros] = useState<Filtros>({
+    cliente: "",
+    situacao: "",
+    canal: "",
+    dataInicio: "",
+    dataFim: "",
+  });
+
+  // Sugestões de cliente (autocomplete)
+  const [clienteSugestoes, setClienteSugestoes] = useState<string[]>([]);
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
 
   // Carregar fechamentos da API
   useEffect(() => {
@@ -83,21 +110,207 @@ export function FechamentosTab() {
     loadFechamentos();
   }, []);
 
-  // Adicionar novo fechamento
-  const handleAdd = async (data: Omit<Fechamento, "id">) => {
-    try {
-      const res = await fetch("/api/previsibilidade/fechamentos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+  // Filtrar dados
+  const filtrados = useMemo(() => {
+    return fechamentos.filter(f => {
+      if (filtros.cliente && !f.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
+      if (filtros.situacao && f.situacao !== filtros.situacao) return false;
+      if (filtros.canal && f.canal !== filtros.canal) return false;
+      if (filtros.dataInicio && new Date(f.data) < new Date(filtros.dataInicio)) return false;
+      if (filtros.dataFim && new Date(f.data) > new Date(filtros.dataFim)) return false;
+      return true;
+    });
+  }, [fechamentos, filtros]);
+
+  // Agrupar por ano e mês
+  const agrupadosPorAnoMes = useMemo(() => {
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const grupos: { [key: number]: { [key: number]: Fechamento[] } } = {};
+
+    filtrados.forEach(f => {
+      const [year, month] = f.data.split('-').slice(0, 2).map(Number);
+      if (!grupos[year]) grupos[year] = {};
+      if (!grupos[year][month]) grupos[year][month] = [];
+      grupos[year][month].push(f);
+    });
+
+    const resultado: YearMonthData[] = [];
+    Object.keys(grupos)
+      .map(Number)
+      .sort((a, b) => b - a)
+      .forEach(year => {
+        const months = Object.keys(grupos[year])
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map(month => {
+            const contratos = grupos[year][month].sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+            const monthTotal = contratos.reduce((sum, c) => {
+              const valor = typeof c.honorarios === 'string' ? parseFloat(c.honorarios) : (c.honorarios || 0);
+              return sum + (isNaN(valor) ? 0 : valor);
+            }, 0);
+            return {
+              month,
+              monthName: meses[month - 1],
+              contratos,
+              total: contratos.length,
+              totalHonorarios: monthTotal,
+            };
+          });
+
+        resultado.push({ year, months });
       });
-      if (!res.ok) throw new Error("Erro ao criar fechamento");
-      const newFechamento = await res.json();
-      setFechamentos([...fechamentos, newFechamento]);
+
+    return resultado;
+  }, [filtrados]);
+
+  // Atualizar sugestões de cliente
+  useEffect(() => {
+    const clientesUnicos = [...new Set(fechamentos.map(f => f.cliente))].sort();
+    setClienteSugestoes(clientesUnicos);
+  }, [fechamentos]);
+
+  // Importar do servidor (TSV)
+  const handleImportFromServer = async () => {
+    try {
+      const res = await fetch("/api/previsibilidade/import-tsv", {
+        method: "POST",
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Erro ao importar");
+
+      alert(`✅ ${result.created} de ${result.total} contratos importados com sucesso!`);
+
+      // Recarregar dados
+      const reloadRes = await fetch("/api/previsibilidade/fechamentos");
+      const newData = await reloadRes.json();
+      setFechamentos(newData);
     } catch (err) {
-      console.error(err);
-      alert("Erro ao criar fechamento");
+      alert("❌ Erro: " + (err instanceof Error ? err.message : "desconhecido"));
     }
+  };
+
+  // Importar dados de arquivo
+  const handleImportFromFile = async () => {
+    try {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json,.tsv";
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const text = await file.text();
+        let dados;
+
+        if (file.name.endsWith('.json')) {
+          dados = JSON.parse(text);
+        } else if (file.name.endsWith('.tsv')) {
+          // Parse TSV
+          const linhas = text.trim().split('\n');
+          const headers = linhas[0].split('\t');
+          dados = linhas.slice(1).map((linha: string) => {
+            const valores = linha.split('\t');
+            const obj: any = {};
+            headers.forEach((h: string, i: number) => {
+              obj[h] = valores[i];
+            });
+            return obj;
+          });
+        }
+
+        const fechamentos = Array.isArray(dados) ? dados : dados.fechamentos;
+
+        const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fechamentos }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+
+        alert(`✅ ${result.created} de ${result.total} contratos importados com sucesso!`);
+
+        // Recarregar dados
+        const reloadRes = await fetch("/api/previsibilidade/fechamentos");
+        const newData = await reloadRes.json();
+        setFechamentos(newData);
+      };
+      input.click();
+    } catch (err) {
+      alert("❌ Erro na importação: " + (err instanceof Error ? err.message : "desconhecido"));
+    }
+  };
+
+  // Exportar CSV
+  const handleExportCSV = () => {
+    if (filtrados.length === 0) {
+      alert("Nenhum dado para exportar");
+      return;
+    }
+
+    const headers = ["Data", "Cliente", "Produto", "Área", "Canal", "Setor", "Situação", "Honorários"];
+    const rows = filtrados.map((f) => [
+      f.data,
+      f.cliente,
+      f.produto,
+      f.area,
+      f.canal,
+      f.setor || "",
+      f.situacao,
+      f.honorarios || "",
+    ]);
+
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Exportar JSON
+  const handleExportJSON = () => {
+    if (filtrados.length === 0) {
+      alert("Nenhum dado para exportar");
+      return;
+    }
+
+    const json = JSON.stringify({ fechamentos: filtrados, exportedAt: new Date().toISOString() }, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Adicionar novo contrato
+  const handleAddNew = async () => {
+    const res = await fetch("/api/previsibilidade/fechamentos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        data: new Date().toISOString().split('T')[0],
+        cliente: "",
+        produto: "BPC/LOAS",
+        area: "previdenciario",
+        canal: "metaAds",
+        setor: "Triagem",
+        obs: "",
+        situacao: "emAndamento",
+        honorarios: 0,
+      }),
+    });
+    if (!res.ok) {
+      alert("Erro ao criar contrato");
+      return;
+    }
+    const newFechamento = await res.json();
+    setFechamentos([...fechamentos, newFechamento]);
   };
 
   // Deletar fechamento
@@ -119,126 +332,58 @@ export function FechamentosTab() {
     const fechToDuplicate = fechamentos.find((f) => f.id === id);
     if (fechToDuplicate) {
       const { id: _, ...dataWithoutId } = fechToDuplicate;
-      await handleAdd({
-        ...dataWithoutId,
-        obs: `${fechToDuplicate.obs} (Cópia)`,
-      });
-    }
-  };
-
-  // Importar dados de arquivo JSON
-  const handleImportFromFile = async () => {
-    try {
-      // Criar input file invisível
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = ".json";
-
-      input.onchange = async (e: any) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const text = await file.text();
-        const jsonData = JSON.parse(text);
-
-        // Suportar ambos os formatos: { fechamentos: [...] } ou [...]
-        let dados = Array.isArray(jsonData) ? jsonData : jsonData.fechamentos;
-
-        if (!Array.isArray(dados) || dados.length === 0) {
-          alert("❌ Formato inválido. Esperado: { fechamentos: [...] } ou [...]");
-          return;
-        }
-
-        // Transformar dados do arquivo para o formato da API
-        const payload = {
-          fechamentos: dados.map((d: any) => {
-            const areaNormalizada = normalizeText(d.area || "previdenciario");
-            const situacaoNormalizada = normalizeText(d.situacao || "emandamento");
-
-            return {
-              data: d.data,
-              cliente: d.cliente,
-              produtoId: d.produtoId || "prod-1",
-              area: (CONVERSAO_AREA[areaNormalizada as keyof typeof CONVERSAO_AREA] || areaNormalizada) as any,
-              canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Google") ? "googleAds" : d.canal?.includes("TikTok") || d.canal?.includes("tiktok") ? "tiktokAds" : d.canal?.includes("Orgânico") || d.canal === "organico" ? "organico" : d.canal || "metaAds",
-              setor: d.setor || "Recepção",
-              obs: d.obs || "",
-              situacao: (CONVERSAO_SITUACAO[situacaoNormalizada as keyof typeof CONVERSAO_SITUACAO] || situacaoNormalizada) as any,
-              honorarios: d.honorarios || 0,
-            };
-          }),
-        };
-
-        const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
+      try {
+        const res = await fetch("/api/previsibilidade/fechamentos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(dataWithoutId),
         });
-
-        if (!res.ok) throw new Error("Erro ao importar");
-        const result = await res.json();
-        alert(`✅ ${result.created} de ${result.total} contratos importados com sucesso!`);
-
-        // Recarregar dados
-        const reloadRes = await fetch("/api/previsibilidade/fechamentos");
-        const newData = await reloadRes.json();
-        setFechamentos(newData);
-      };
-
-      input.click();
-    } catch (err) {
-      alert("❌ Erro na importação: " + (err instanceof Error ? err.message : "desconhecido"));
+        if (!res.ok) throw new Error("Erro ao duplicar");
+        const newFechamento = await res.json();
+        setFechamentos([...fechamentos, newFechamento]);
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao duplicar fechamento");
+      }
     }
   };
 
-  // Exportar dados para CSV
-  const handleExportCSV = () => {
-    if (fechamentos.length === 0) {
-      alert("Nenhum dado para exportar");
-      return;
+  const toggleYear = (year: number) => {
+    const nova = new Set(expandedYears);
+    if (nova.has(year)) {
+      nova.delete(year);
+    } else {
+      nova.add(year);
     }
-
-    const headers = ["Data", "Cliente", "Produto", "Área", "Canal", "Setor", "Status", "Honorários"];
-    const rows = fechamentos.map((f) => [
-      f.data,
-      f.cliente,
-      f.produto,
-      f.area,
-      f.canal,
-      f.setor || "",
-      f.situacao,
-      f.honorarios || "",
-    ]);
-
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setExpandedYears(nova);
   };
 
-  // Exportar dados para JSON
-  const handleExportJSON = () => {
-    if (fechamentos.length === 0) {
-      alert("Nenhum dado para exportar");
-      return;
+  const toggleMonth = (year: number, month: number) => {
+    const key = `${year}-${month}`;
+    const nova = new Set(expandedMonths);
+    if (nova.has(key)) {
+      nova.delete(key);
+    } else {
+      nova.add(key);
     }
-
-    const json = JSON.stringify({ fechamentos, exportedAt: new Date().toISOString() }, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setExpandedMonths(nova);
   };
 
-  const totalFechamentos = fechamentos.length;
-  const totalHonorarios = fechamentos.reduce((sum, f) => sum + (f.honorarios || 0), 0);
+  const limparFiltros = () => {
+    setFiltros({
+      cliente: "",
+      situacao: "",
+      canal: "",
+      dataInicio: "",
+      dataFim: "",
+    });
+  };
+
+  const totalFechamentos = filtrados.length;
+  const totalHonorarios = filtrados.reduce((sum, f) => {
+    const valor = typeof f.honorarios === 'string' ? parseFloat(f.honorarios) : (f.honorarios || 0);
+    return sum + (isNaN(valor) ? 0 : valor);
+  }, 0);
 
   if (loading) {
     return (
@@ -267,7 +412,7 @@ export function FechamentosTab() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <p className="text-sm text-slate-600 dark:text-slate-400">Honorários Acertados</p>
-          <p className="text-3xl font-bold text-green-600">R$ {totalHonorarios.toLocaleString("pt-BR")}</p>
+          <p className="text-3xl font-bold text-green-600">{formatarMoeda(totalHonorarios)}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <p className="text-sm text-slate-600 dark:text-slate-400">Taxa Conversão</p>
@@ -275,17 +420,22 @@ export function FechamentosTab() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          📋 CONTROLE DE PRAZOS E STATUS
-        </h3>
-        <div className="flex items-center gap-2">
+      {/* Botões de Ação */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
           <button
             onClick={handleImportFromFile}
             className="flex items-center gap-2 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-            title="Importar arquivo JSON"
+            title="Importar arquivo JSON/TSV"
           >
             📥 Importar
+          </button>
+          <button
+            onClick={handleImportFromServer}
+            className="flex items-center gap-2 rounded bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            title="Importar do servidor (TSV)"
+          >
+            🖥️ Servidor
           </button>
           <button
             onClick={handleExportCSV}
@@ -301,91 +451,213 @@ export function FechamentosTab() {
           >
             📄 JSON
           </button>
+        </div>
+        <button
+          onClick={handleAddNew}
+          className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4" /> Novo Contrato
+        </button>
+      </div>
+
+      {/* Filtros */}
+      <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-slate-900 dark:text-white">🔍 Filtros</h3>
           <button
-            onClick={() => handleAdd({
-              data: new Date().toISOString().split('T')[0],
-              cliente: "",
-              produto: "BPC/LOAS",
-              area: "Previdenciário",
-              canal: "metaAds",
-              setor: "Triagem",
-              obs: "",
-              situacao: "emAndamento",
-              honorarios: 0,
-            })}
-            className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            onClick={limparFiltros}
+            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
           >
-            <Plus className="h-4 w-4" /> Novo Contrato
+            Limpar filtros
           </button>
+        </div>
+
+        <div className="grid grid-cols-5 gap-4">
+          {/* Cliente com autocomplete */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Cliente</label>
+            <input
+              type="text"
+              placeholder="Digite o cliente..."
+              value={filtros.cliente}
+              onChange={(e) => {
+                setFiltros({ ...filtros, cliente: e.target.value });
+                setMostrarSugestoes(true);
+              }}
+              onFocus={() => setMostrarSugestoes(true)}
+              onBlur={() => setTimeout(() => setMostrarSugestoes(false), 200)}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm dark:bg-slate-800 dark:border-slate-600"
+            />
+            {mostrarSugestoes && filtros.cliente && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded shadow-lg z-10">
+                {clienteSugestoes
+                  .filter(c => c.toLowerCase().includes(filtros.cliente.toLowerCase()))
+                  .slice(0, 5)
+                  .map(cliente => (
+                    <button
+                      key={cliente}
+                      onClick={() => {
+                        setFiltros({ ...filtros, cliente });
+                        setMostrarSugestoes(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 text-sm"
+                    >
+                      {cliente}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Situação */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Situação</label>
+            <select
+              value={filtros.situacao}
+              onChange={(e) => setFiltros({ ...filtros, situacao: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm dark:bg-slate-800 dark:border-slate-600"
+            >
+              <option value="">Todas</option>
+              {SITUACOES.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Canal */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Canal</label>
+            <select
+              value={filtros.canal}
+              onChange={(e) => setFiltros({ ...filtros, canal: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm dark:bg-slate-800 dark:border-slate-600"
+            >
+              <option value="">Todos</option>
+              {CANAIS.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Data Início */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Data Início</label>
+            <input
+              type="date"
+              value={filtros.dataInicio}
+              onChange={(e) => setFiltros({ ...filtros, dataInicio: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm dark:bg-slate-800 dark:border-slate-600"
+            />
+          </div>
+
+          {/* Data Fim */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Data Fim</label>
+            <input
+              type="date"
+              value={filtros.dataFim}
+              onChange={(e) => setFiltros({ ...filtros, dataFim: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded text-sm dark:bg-slate-800 dark:border-slate-600"
+            />
+          </div>
         </div>
       </div>
 
-      {fechamentos.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-800">
-          <p className="text-slate-600 dark:text-slate-400">Nenhum fechamento registrado. Clique em "Novo Contrato" para começar.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-gray-800">
-                <th className="px-4 py-3 text-left font-semibold">Data</th>
-                <th className="px-4 py-3 text-left font-semibold">Cliente</th>
-                <th className="px-4 py-3 text-left font-semibold">Produto</th>
-                <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Área</th>
-                <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Canal</th>
-                <th className="px-4 py-3 text-left font-semibold">Status</th>
-                <th className="px-4 py-3 text-right font-semibold">Honorários</th>
-                <th className="px-4 py-3 text-center font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fechamentos.map((fech) => (
-                <tr key={fech.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                  <td className="px-4 py-3 text-sm text-slate-600">{fech.data}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{fech.cliente}</td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{fech.produto}</td>
-                  <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.area}</td>
-                  <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.canal}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                        fech.situacao === "beneficioConcedido"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      }`}
-                    >
-                      {fech.situacao}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-green-600">
-                    {fech.honorarios ? `R$ ${fech.honorarios.toLocaleString("pt-BR")}` : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-center space-x-2">
-                    <button className="inline text-blue-600 hover:text-blue-700" title="Editar">
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm({ open: true, id: fech.id })}
-                      className="inline text-red-600 hover:text-red-700"
-                      title="Deletar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(fech.id)}
-                      className="inline text-green-600 hover:text-green-700"
-                      title="Duplicar"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Hierarquia Ano/Mês */}
+      <div className="space-y-2">
+        {agrupadosPorAnoMes.length === 0 ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-800">
+            <p className="text-slate-600 dark:text-slate-400">Nenhum fechamento encontrado com os filtros aplicados.</p>
+          </div>
+        ) : (
+          agrupadosPorAnoMes.map(yearData => (
+            <div key={yearData.year}>
+              {/* Year Header */}
+              <button
+                onClick={() => toggleYear(yearData.year)}
+                className="w-full flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors"
+              >
+                {expandedYears.has(yearData.year) ? (
+                  <ChevronDown className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-blue-600" />
+                )}
+                <span className="font-semibold text-blue-900 dark:text-blue-100">{yearData.year}</span>
+                <span className="text-sm text-blue-700 dark:text-blue-300 ml-auto">
+                  {yearData.months.reduce((sum, m) => sum + m.total, 0)} contratos
+                </span>
+              </button>
+
+              {/* Months */}
+              {expandedYears.has(yearData.year) && (
+                <div className="ml-4 space-y-2 mt-2">
+                  {yearData.months.map(monthData => (
+                    <div key={`${yearData.year}-${monthData.month}`}>
+                      {/* Month Header */}
+                      <button
+                        onClick={() => toggleMonth(yearData.year, monthData.month)}
+                        className="w-full flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        {expandedMonths.has(`${yearData.year}-${monthData.month}`) ? (
+                          <ChevronDown className="h-4 w-4 text-slate-600" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-slate-600" />
+                        )}
+                        <span className="font-medium text-slate-900 dark:text-white">{monthData.monthName}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 ml-auto">
+                          {monthData.total} contratos • {formatarMoeda(monthData.totalHonorarios)}
+                        </span>
+                      </button>
+
+                      {/* Contratos */}
+                      {expandedMonths.has(`${yearData.year}-${monthData.month}`) && (
+                        <div className="ml-4 mt-2 space-y-1">
+                          {monthData.contratos.map(fech => (
+                            <div
+                              key={fech.id}
+                              className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm"
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium text-slate-900 dark:text-white">{fech.cliente}</p>
+                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                  {formatarData(fech.data)} • <span className="font-semibold text-blue-600 dark:text-blue-400">{fech.produto}</span> • {fech.canal} • {fech.area}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <p className="text-right">
+                                  <span className="font-semibold text-green-600">{formatarMoeda(fech.honorarios)}</span>
+                                  <br />
+                                  <span className="text-xs text-slate-600 dark:text-slate-400">{fech.situacao}</span>
+                                </p>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleDuplicate(fech.id)}
+                                    className="text-green-600 hover:text-green-700 dark:text-green-400"
+                                    title="Duplicar"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm({ open: true, id: fech.id })}
+                                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                                    title="Deletar"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
       <ConfirmacaoDeleteDialog
         open={deleteConfirm.open}
@@ -397,10 +669,6 @@ export function FechamentosTab() {
           setDeleteConfirm({ open: false, id: "" });
         }}
       />
-
-      <p className="text-sm text-slate-600 dark:text-slate-400">
-        <strong>{totalFechamentos} contratos reais</strong> · Rastreamento desde entrada até conclusão
-      </p>
     </div>
   );
 }

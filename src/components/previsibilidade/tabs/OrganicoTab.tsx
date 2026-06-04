@@ -1,216 +1,216 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit2, Trash2, Copy } from "lucide-react";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { AdicionarOrganicoModal } from "../modals/AdicionarOrganicoModal";
-import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
+import { useState, useEffect, useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 
-interface Organico {
+interface Fechamento {
   id: string;
-  mes: string;
-  canalOrganico: string;
-  produto: string;
-  origemEspecifica: string;
-  leads: number;
-  atendimentos: number;
-  contratos: number;
+  data: string;
+  cliente: string;
+  produtoId: string;
+  area: string;
+  canal: string;
+  setor: string;
+  obs: string;
+  situacao: string;
+  honorarios: number;
 }
 
-const ORGANICO_EXEMPLO: Organico[] = [
-  {
-    id: "1",
-    mes: "2026-05",
-    canalOrganico: "WhatsApp/Indicação",
-    produto: "BPC/LOAS",
-    origemEspecifica: "Indicação do cliente X",
-    leads: 12,
-    atendimentos: 5,
-    contratos: 3,
-  },
-];
-
-const PRODUTOS_CONFIG = {
-  "BPC/LOAS": { honorario: 6484, prob: 0.65 },
-  "Aposentadoria": { honorario: 5000, prob: 0.6 },
-};
+interface OrganicoAgrupado {
+  mes: string;
+  origem: string;
+  contratos: number;
+  honorarioMedio: number;
+  totalHonorarios: number;
+}
 
 export function OrganicoTab() {
-  const [organicos, setOrganicos] = useLocalStorage<Organico[]>(
-    "previsibilidade_organicos",
-    ORGANICO_EXEMPLO
-  );
+  const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [openModal, setOpenModal] = useState(false);
-  const [editingOrganico, setEditingOrganico] = useState<Organico | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({
-    open: false,
-    id: "",
-  });
-
-  const handleAdd = (data: Omit<Organico, "id">) => {
-    const newOrganico: Organico = {
-      ...data,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  // Buscar dados dos Fechamentos
+  useEffect(() => {
+    const fetchFechamentos = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/previsibilidade/fechamentos");
+        if (!response.ok) throw new Error("Erro ao buscar fechamentos");
+        const data = await response.json();
+        setFechamentos(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao carregar dados");
+      } finally {
+        setLoading(false);
+      }
     };
-    setOrganicos([...organicos, newOrganico]);
+
+    fetchFechamentos();
+  }, []);
+
+  // Agrupar por mês + origem (Seção C de Indicação)
+  const organicosAgrupados = useMemo(() => {
+    // Filtrar apenas orgânicos
+    const organicos = fechamentos.filter((f) => f.canal === "organico");
+
+    // Agrupar por mês + origem (obs)
+    const mapa = new Map<string, OrganicoAgrupado>();
+
+    organicos.forEach((fech) => {
+      const mes = fech.data.substring(0, 7); // YYYY-MM
+      const origem = fech.obs || "Sem origem";
+      const chave = `${mes}|${origem}`;
+
+      // Converter honorarios para número com segurança
+      const honorariosNum = typeof fech.honorarios === 'string'
+        ? parseFloat(fech.honorarios)
+        : (fech.honorarios || 0);
+      const honorariosValido = isNaN(honorariosNum) ? 0 : honorariosNum;
+
+      const existente = mapa.get(chave);
+      if (existente) {
+        existente.contratos += 1;
+        existente.totalHonorarios += honorariosValido;
+        existente.honorarioMedio = existente.totalHonorarios / existente.contratos;
+      } else {
+        mapa.set(chave, {
+          mes,
+          origem,
+          contratos: 1,
+          honorarioMedio: honorariosValido,
+          totalHonorarios: honorariosValido,
+        });
+      }
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => b.mes.localeCompare(a.mes));
+  }, [fechamentos]);
+
+  // Formatação de moeda
+  const formatarMoeda = (valor: number): string => {
+    if (!valor && valor !== 0) return "—";
+    const numValue = typeof valor === "string" ? parseFloat(valor) : valor;
+    if (isNaN(numValue)) return "—";
+    return `R$ ${numValue.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
-  const handleEdit = (data: Omit<Organico, "id">) => {
-    if (editingOrganico) {
-      setOrganicos(organicos.map((o) => (o.id === editingOrganico.id ? { ...o, ...data } : o)));
-      setEditingOrganico(null);
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    setOrganicos(organicos.filter((o) => o.id !== id));
-  };
-
-  const handleDuplicate = (id: string) => {
-    const orgToDuplicate = organicos.find((o) => o.id === id);
-    if (orgToDuplicate) {
-      const newOrganico: Organico = {
-        ...orgToDuplicate,
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        origemEspecifica: `${orgToDuplicate.origemEspecifica} (Cópia)`,
-      };
-      setOrganicos([...organicos, newOrganico]);
-    }
-  };
-
-  const handleSave = (data: Omit<Organico, "id">) => {
-    if (editingOrganico) {
-      handleEdit(data);
-    } else {
-      handleAdd(data);
-    }
-    setOpenModal(false);
+  const handleReload = () => {
+    setLoading(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-            🌱 LEADS ORGÂNICOS
+            🌱 ORGÂNICOS POR MÊS DE INDICAÇÃO
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">WhatsApp, Instagram, SEO, Google Meu Negócio</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Referência automática dos Fechamentos (canal = orgânico) agrupado por mês e origem
+          </p>
         </div>
         <button
-          onClick={() => {
-            setEditingOrganico(null);
-            setOpenModal(true);
-          }}
-          className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          onClick={handleReload}
+          disabled={loading}
+          className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" /> Novo Lead
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Recarregar
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-gray-800">
-              <th className="px-4 py-3 text-left font-semibold">Identificação</th>
-              <th className="px-4 py-3 text-right font-semibold bg-yellow-50 dark:bg-yellow-900/10">Leads</th>
-              <th className="px-4 py-3 text-right font-semibold bg-yellow-50 dark:bg-yellow-900/10">Atendimentos</th>
-              <th className="px-4 py-3 text-right font-semibold bg-yellow-50 dark:bg-yellow-900/10">Contratos</th>
-              <th className="px-4 py-3 text-right font-semibold bg-blue-50 dark:bg-blue-900/10">Fat. Potencial</th>
-              <th className="px-4 py-3 text-right font-semibold bg-blue-50 dark:bg-blue-900/10">Fat. Previsto</th>
-              <th className="px-4 py-3 text-right font-semibold bg-blue-50 dark:bg-blue-900/10">Lucro Previsto</th>
-              <th className="px-4 py-3 text-center font-semibold">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {organicos.map((org) => {
-              const config = PRODUTOS_CONFIG[org.produto as keyof typeof PRODUTOS_CONFIG] || { honorario: 0, prob: 0.65 };
-              const fatPot = org.contratos * config.honorario;
-              const fatPrev = fatPot * config.prob;
-              const lucro = fatPrev * (1 - 0.22);
+      {/* Estado de carregamento */}
+      {loading && (
+        <div className="text-center py-8">
+          <p className="text-slate-600 dark:text-slate-400">⏳ Carregando dados...</p>
+        </div>
+      )}
 
-              return (
-                <tr key={org.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900 dark:text-white">{org.canalOrganico}</div>
-                    <div className="text-xs text-slate-500">{org.mes} • {org.produto}</div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400">{org.origemEspecifica}</div>
-                  </td>
-                  <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">{org.leads}</td>
-                  <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">{org.atendimentos}</td>
-                  <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 text-slate-900 dark:text-white">{org.contratos}</td>
-                  <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
-                    R$ {fatPot.toLocaleString("pt-BR")}
-                  </td>
-                  <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-green-600">
-                    R$ {fatPrev.toLocaleString("pt-BR")}
-                  </td>
-                  <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-green-600">
-                    R$ {lucro.toLocaleString("pt-BR")}
-                  </td>
-                  <td className="px-4 py-3 text-center space-x-2">
-                    <button
-                      onClick={() => {
-                        setEditingOrganico(org);
-                        setOpenModal(true);
-                      }}
-                      className="inline text-blue-600 hover:text-blue-700"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm({ open: true, id: org.id })}
-                      className="inline text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(org.id)}
-                      className="inline text-green-600 hover:text-green-700"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* Erro */}
+      {error && (
+        <div className="rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900/20 dark:text-red-200 border border-red-200 dark:border-red-900">
+          <p>❌ {error}</p>
+        </div>
+      )}
 
-      <AdicionarOrganicoModal
-        open={openModal}
-        onOpenChange={(open) => {
-          setOpenModal(open);
-          if (!open) setEditingOrganico(null);
-        }}
-        onSave={handleSave}
-        editingOrganico={editingOrganico}
-        produtos={Object.keys(PRODUTOS_CONFIG)}
-        honorariosMedio={Object.fromEntries(
-          Object.entries(PRODUTOS_CONFIG).map(([k, v]) => [k, v.honorario])
-        )}
-        probRecebimentos={Object.fromEntries(
-          Object.entries(PRODUTOS_CONFIG).map(([k, v]) => [k, v.prob])
-        )}
-      />
+      {/* Tabela de Orgânicos */}
+      {!loading && !error && (
+        <>
+          {organicosAgrupados.length === 0 ? (
+            <div className="rounded-lg bg-slate-50 p-8 text-center dark:bg-slate-800">
+              <p className="text-slate-600 dark:text-slate-400">
+                📭 Nenhum contrato com canal "orgânico" encontrado
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-gray-800">
+                    <th className="px-4 py-3 text-left font-semibold">Mês</th>
+                    <th className="px-4 py-3 text-left font-semibold">Origem da Indicação</th>
+                    <th className="px-4 py-3 text-right font-semibold bg-yellow-50 dark:bg-yellow-900/10">Contratos</th>
+                    <th className="px-4 py-3 text-right font-semibold bg-blue-50 dark:bg-blue-900/10">Honorário Médio</th>
+                    <th className="px-4 py-3 text-right font-semibold bg-blue-50 dark:bg-blue-900/10">Total Honorários</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organicosAgrupados.map((org, idx) => (
+                    <tr key={idx} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{org.mes}</td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{org.origem}</td>
+                      <td className="px-4 py-3 text-right bg-yellow-50 dark:bg-yellow-900/10 font-medium text-slate-900 dark:text-white">
+                        {org.contratos}
+                      </td>
+                      <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-slate-900 dark:text-white">
+                        {formatarMoeda(org.honorarioMedio)}
+                      </td>
+                      <td className="px-4 py-3 text-right bg-blue-50 dark:bg-blue-900/10 font-medium text-green-600">
+                        {formatarMoeda(org.totalHonorarios)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      <ConfirmacaoDeleteDialog
-        open={deleteConfirm.open}
-        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-        title="Deletar Lead Orgânico?"
-        description="Esta ação não pode ser desfeita."
-        onConfirm={() => {
-          handleDelete(deleteConfirm.id);
-          setDeleteConfirm({ open: false, id: "" });
-        }}
-      />
+          {/* Resumo */}
+          {organicosAgrupados.length > 0 && (
+            <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-600 dark:text-slate-400">Total de Indicações (Orgânicos)</p>
+                  <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                    {organicosAgrupados.reduce((sum, org) => sum + org.contratos, 0)} contratos
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-600 dark:text-slate-400">Total de Honorários</p>
+                  <p className="text-lg font-semibold text-green-600">
+                    {formatarMoeda(organicosAgrupados.reduce((sum, org) => sum + org.totalHonorarios, 0))}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-      <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900">
-        <p className="text-sm text-blue-900 dark:text-blue-200">
-          💡 Campos amarelos = entrada manual · Campos azuis = cálculos automáticos
-        </p>
-      </div>
+          {/* Info */}
+          <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900">
+            <p className="text-sm text-blue-900 dark:text-blue-200">
+              ℹ️ Seção C de Indicação — Dados automáticos da aba Fechamentos, filtrados por canal = "orgânico",
+              agrupados por mês e origem (campo Obs).
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
