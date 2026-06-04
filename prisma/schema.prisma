@@ -551,6 +551,84 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ─── PREVISIBILIDADE (REVENUE FORECASTING) ────────────────────────────────
+
+enum PrevisibilidadeAreaJuridica {
+  previdenciario
+  trabalhista
+  familia
+  civil
+  outro
+}
+
+enum PrevisibilidadeOrigemLead {
+  metaAds
+  googleAds
+  tiktokAds
+  linkedinAds
+  organico
+  outro
+}
+
+enum PrevisibilidadeSituacao {
+  beneficioConcedido
+  beneficioNegado
+  emAndamento
+  semViabilidade
+}
+
+model PrevisibilidadeProduto {
+  id                    String   @id @default(cuid())
+  nome                  String   @unique
+  honorarioMedio        Decimal  @db.Decimal(10, 2)
+  probRecebimento       Decimal  @db.Decimal(5, 2)
+  custoOperac           Decimal  @db.Decimal(5, 2)
+  metaFatMensal         Decimal  @db.Decimal(12, 2)
+  convLeadAtend         Decimal  @db.Decimal(5, 2)
+  convAtendContrato     Decimal  @db.Decimal(5, 2)
+  cplRef                Decimal  @db.Decimal(10, 2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  fechamentos           PrevisibilidadeFechamento[]
+
+  @@map("previsibilidade_produtos")
+}
+
+model PrevisibilidadeCanalPago {
+  id                String   @id @default(cuid())
+  canal             String   @unique
+  metaOrcamento     Decimal  @db.Decimal(12, 2)
+  cpcMedio          Decimal  @db.Decimal(10, 2)
+  convCliqueLead    Decimal  @db.Decimal(5, 2)
+  cplMeta           Decimal  @db.Decimal(10, 2)
+  retornoPercent    Decimal  @db.Decimal(5, 2)
+  obs               String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("previsibilidade_canais_pago")
+}
+
+model PrevisibilidadeFechamento {
+  id              String                            @id @default(cuid())
+  data            DateTime
+  cliente         String
+  produtoId       String
+  area            PrevisibilidadeAreaJuridica
+  canal           PrevisibilidadeOrigemLead
+  setor           String?
+  obs             String?
+  situacao        PrevisibilidadeSituacao
+  honorarios      Decimal?                          @db.Decimal(12, 2)
+  createdAt       DateTime                          @default(now())
+  updatedAt       DateTime                          @updatedAt
+
+  produto         PrevisibilidadeProduto            @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+
+  @@map("previsibilidade_fechamentos")
+}
+
 // ─── WHATSAPP IA INTEGRATION ───────────────────────────────────────────────
 
 // Roteiros configuráveis (system prompts por área jurídica)
