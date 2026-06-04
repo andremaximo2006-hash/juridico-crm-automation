@@ -40,7 +40,20 @@ const ALL_NAV_ITEMS: NavItem[] = [
     ]
   },
   { href: "/clientes", icon: UserCheck, label: "Clientes", menuId: "clientes", roles: ["admin", "padrao"] },
-  { href: "/operacional", icon: ClipboardList, label: "Operacional", menuId: "operacional", roles: ["admin", "padrao"] },
+  {
+    icon: ClipboardList,
+    label: "Operacional",
+    menuId: "operacional",
+    roles: ["admin", "padrao"],
+    submenu: [
+      { href: "/operacional", icon: BarChart3, label: "📊 Kanban Principal", menuId: "operacional-kanban", roles: ["admin", "padrao"] },
+      { href: "/operacional/abas", icon: BarChart3, label: "📋 Abas", menuId: "operacional-abas", roles: ["admin", "padrao"] },
+      { href: "/operacional/abas?tab=cadsenha", icon: BarChart3, label: "🔐 CADSENHA", menuId: "operacional-cadsenha", roles: ["admin", "padrao"] },
+      { href: "/operacional/abas?tab=iniciais", icon: BarChart3, label: "📝 INICIAIS", menuId: "operacional-iniciais", roles: ["admin", "padrao"] },
+      { href: "/operacional/abas?tab=salmaternidade", icon: BarChart3, label: "👶 SAL. MATERNIDADE", menuId: "operacional-salmaternidade", roles: ["admin", "padrao"] },
+      { href: "/operacional/abas?tab=pagina16", icon: BarChart3, label: "📄 PÁGINA 16", menuId: "operacional-pagina16", roles: ["admin", "padrao"] },
+    ]
+  },
   { href: "/financeiro", icon: DollarSign, label: "Financeiro", menuId: "financeiro", roles: ["admin", "financeiro"] },
   {
     icon: TrendingUp,
