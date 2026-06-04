@@ -27,6 +27,32 @@ const SITUACOES = [
   "semViabilidade",
 ];
 
+// Função auxiliar para remover acentos e normalizar texto
+const normalizeText = (text: string): string => {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // Remove acentos
+    .toLowerCase()
+    .replace(/ /g, ''); // Remove espaços
+};
+
+// Mapa de conversão para valores do localStorage → enums da API
+const CONVERSAO_AREA = {
+  'previdenciario': 'previdenciario',
+  'trabalhista': 'trabalhista',
+  'familia': 'familia',
+  'civil': 'civil',
+  'civel': 'civil', // Alternativa com acento/v extra
+  'outro': 'outro',
+};
+
+const CONVERSAO_SITUACAO = {
+  'beneficioconcedido': 'beneficioConcedido',
+  'beneficionegado': 'beneficioNegado',
+  'emandamento': 'emAndamento',
+  'semviabilidade': 'semViabilidade',
+};
+
 export function FechamentosTab() {
   const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,17 +143,22 @@ export function FechamentosTab() {
 
       // Transformar dados do localStorage para o formato da API
       const payload = {
-        fechamentos: dados.map((d: any) => ({
-          data: d.data,
-          cliente: d.cliente,
-          produtoId: "prod-1",
-          area: d.area?.toLowerCase() || "previdenciario",
-          canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Orgânico") ? "organico" : "metaAds",
-          setor: d.setor || "Recepção",
-          obs: d.obs || "",
-          situacao: d.situacao?.toLowerCase().replace(/ /g, "") || "emAndamento",
-          honorarios: d.honorarios || 0,
-        })),
+        fechamentos: dados.map((d: any) => {
+          const areaNormalizada = normalizeText(d.area || "previdenciario");
+          const situacaoNormalizada = normalizeText(d.situacao || "emandamento");
+
+          return {
+            data: d.data,
+            cliente: d.cliente,
+            produtoId: "prod-1",
+            area: (CONVERSAO_AREA[areaNormalizada as keyof typeof CONVERSAO_AREA] || areaNormalizada) as any,
+            canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Orgânico") ? "organico" : "metaAds",
+            setor: d.setor || "Recepção",
+            obs: d.obs || "",
+            situacao: (CONVERSAO_SITUACAO[situacaoNormalizada as keyof typeof CONVERSAO_SITUACAO] || situacaoNormalizada) as any,
+            honorarios: d.honorarios || 0,
+          };
+        }),
       };
 
       const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
