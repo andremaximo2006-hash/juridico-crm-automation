@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface BulkFechamento {
   data: string;
@@ -37,12 +35,12 @@ export async function POST(request: NextRequest) {
         data: new Date(f.data),
         cliente: f.cliente,
         produtoId: f.produtoId,
-        area: f.area,
-        canal: f.canal,
+        area: f.area as any,
+        canal: f.canal as any,
         setor: f.setor || null,
         obs: f.obs || null,
-        situacao: f.situacao,
-        honorarios: f.honorarios || null,
+        situacao: f.situacao as any,
+        honorarios: f.honorarios ? parseFloat(String(f.honorarios)) : null,
       })),
       skipDuplicates: true,
     });

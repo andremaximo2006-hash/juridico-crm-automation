@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/previsibilidade/fechamentos/[id]
@@ -9,11 +7,12 @@ const prisma = new PrismaClient();
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const fechamento = await prisma.previsibilidadeFechamento.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         produto: true,
       },
@@ -42,9 +41,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
 
     const {
@@ -60,7 +60,7 @@ export async function PUT(
     } = body;
 
     const fechamento = await prisma.previsibilidadeFechamento.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(data && { data: new Date(data) }),
         ...(cliente && { cliente }),
@@ -93,11 +93,12 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await prisma.previsibilidadeFechamento.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });
