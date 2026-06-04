@@ -1,156 +1,79 @@
 #!/bin/bash
 
-# CRM Jurídico - Production Deployment Script
-# Este script faz o deploy da aplicação para o servidor de produção
+# Script de Deploy para VPS
+# Executa na VPS para atualizar o código e reiniciar a aplicação
 
-set -e
-
-SERVER_USER="root"
-SERVER_HOST="gabriel.server.com"  # Alterar para IP/hostname correto
-SERVER_PATH="/var/www/juridico-crm-automation"
-SSH_KEY="~/.ssh/vps_key"
-
-echo "🚀 CRM Jurídico - Deploy Script"
-echo "================================"
+echo "🚀 Iniciando deploy na VPS..."
+echo "📍 Servidor: 2.25.128.221"
+echo "📁 Caminho: /var/www/juridico-crm-automation"
 echo ""
 
-# 1. Verificar se está no diretório certo
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Verificar se está na pasta certa
 if [ ! -f "package.json" ]; then
-    echo "❌ Erro: package.json não encontrado. Execute este script do raiz do projeto."
+    echo -e "${RED}❌ Erro: package.json não encontrado${NC}"
+    echo "Execute este script dentro de /var/www/juridico-crm-automation"
     exit 1
 fi
 
-echo "✅ Diretório correto"
-
-# 2. Verificar se há mudanças não commitadas
-if [ -n "$(git status --porcelain)" ]; then
-    echo "⚠️  Há mudanças não commitadas:"
-    git status
-    read -p "Deseja continuar? (s/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        exit 1
-    fi
-fi
-
-# 3. Limpar e fazer build
-echo ""
-echo "🔨 Fazendo build..."
-rm -rf .next
-npm run build
-
+# 1. Git Pull
+echo -e "${YELLOW}1️⃣  Atualizando código do Git...${NC}"
+git pull origin main
 if [ $? -ne 0 ]; then
-    echo "❌ Build falhou!"
+    echo -e "${RED}❌ Erro ao fazer git pull${NC}"
     exit 1
 fi
-
-echo "✅ Build completado com sucesso"
-
-# 4. Criar tarball
-echo ""
-echo "📦 Criando tarball para deploy..."
-tar --exclude=node_modules --exclude=.git -czf /tmp/deploy.tar.gz .
-
-TARBALL_SIZE=$(du -h /tmp/deploy.tar.gz | cut -f1)
-echo "✅ Tarball criado: $TARBALL_SIZE"
-
-# 5. SSH para servidor
-echo ""
-echo "🌐 Enviando para servidor..."
-echo "Servidor: $SERVER_USER@$SERVER_HOST"
-echo "Caminho: $SERVER_PATH"
+echo -e "${GREEN}✓ Código atualizado${NC}"
 echo ""
 
-# Verificar conexão
-ssh -i $SSH_KEY -o ConnectTimeout=5 $SERVER_USER@$SERVER_HOST "echo '✅ Conectado ao servidor'" || {
-    echo "❌ Erro ao conectar ao servidor"
-    exit 1
-}
-
-# Fazer upload
-echo "Fazendo upload... (pode levar alguns minutos)"
-scp -i $SSH_KEY /tmp/deploy.tar.gz $SERVER_USER@$SERVER_HOST:/tmp/
-
-# Fazer deploy no servidor
-echo "Extraindo e atualizando..."
-ssh -i $SSH_KEY $SERVER_USER@$SERVER_HOST << 'REMOTE_COMMANDS'
-set -e
-
-# Parar aplicação
-pm2 stop juridico-crm 2>/dev/null || true
-
-# Backup
-BACKUP_DIR="/var/www/backups/juridico-crm-$(date +%Y%m%d-%H%M%S)"
-mkdir -p $BACKUP_DIR
-cp -r /var/www/juridico-crm-automation/.next $BACKUP_DIR/ 2>/dev/null || true
-
-# Extrair novo código
-cd /var/www
-tar -xzf /tmp/deploy.tar.gz
-
-# Instalar dependências
-cd /var/www/juridico-crm-automation
-npm install
-
-# Fazer build
+# 2. Build
+echo -e "${YELLOW}2️⃣  Reconstruindo aplicação...${NC}"
 npm run build
-
-# Criar server.js se não existir
-if [ ! -f "server.js" ]; then
-    cat > server.js << 'EOF'
-const { createServer } = require("http");
-const { NextServer } = require("next/dist/server/next-server");
-const path = require("path");
-
-const isDev = process.env.NODE_ENV !== "production";
-const dir = path.resolve(__dirname);
-const nextServer = new NextServer({
-  dir,
-  dev: isDev,
-});
-
-const handler = nextServer.getRequestHandler();
-const server = createServer((req, res) => {
-  handler(req, res).catch((e) => {
-    console.error(e);
-    res.writeHead(500);
-    res.end("Internal server error");
-  });
-});
-
-const port = parseInt(process.env.PORT || "3000", 10);
-server.listen(port, (err) => {
-  if (err) throw err;
-  console.log(`> Ready on http://localhost:${port}`);
-});
-
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully...");
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
-});
-EOF
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Erro ao reconstruir${NC}"
+    exit 1
 fi
-
-# Reiniciar com PM2
-pm2 start server.js --name "juridico-crm" || pm2 restart "juridico-crm"
-pm2 save
-
-echo "✅ Deploy completado com sucesso!"
-echo "Acesse: https://crm.gabriellenunes.com.br"
-
-REMOTE_COMMANDS
-
+echo -e "${GREEN}✓ Build concluído${NC}"
 echo ""
-echo "✅ Deploy finalizado!"
-echo "Limpando arquivos temporários..."
-rm /tmp/deploy.tar.gz
 
+# 3. Restart PM2
+echo -e "${YELLOW}3️⃣  Reiniciando com PM2...${NC}"
+pm2 restart all
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Erro ao reiniciar PM2${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ PM2 reiniciado${NC}"
 echo ""
-echo "🎉 Sucesso! A aplicação foi atualizada."
+
+# 4. Status
+echo -e "${YELLOW}4️⃣  Verificando status...${NC}"
+pm2 status
+echo ""
+
+# 5. Test
+echo -e "${YELLOW}5️⃣  Testando aplicação...${NC}"
+sleep 3
+STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://localhost/login)
+if [ "$STATUS_CODE" = "200" ] || [ "$STATUS_CODE" = "301" ]; then
+    echo -e "${GREEN}✓ Aplicação está online (HTTP $STATUS_CODE)${NC}"
+else
+    echo -e "${RED}⚠️  Verificar status (HTTP $STATUS_CODE)${NC}"
+fi
+echo ""
+
+echo -e "${GREEN}🎉 Deploy concluído com sucesso!${NC}"
 echo ""
 echo "Próximos passos:"
-echo "1. Teste a aplicação em: https://crm.gabriellenunes.com.br"
-echo "2. Verifique os logs: pm2 logs juridico-crm"
+echo "1. Executar reset de senha:"
+echo "   curl -X POST https://crm.gabriellenunes.com.br/api/admin/reset-password \\"
+echo "     -H 'Content-Type: application/json' \\"
+echo "     -d '{\"adminKey\":\"reset-2026-juridico\",\"email\":\"andre.maximo@gabriellenunes.com.br\",\"newPassword\":\"Teste@123\"}'"
+echo ""
+echo "2. Testar login em https://crm.gabriellenunes.com.br/login"
+echo ""
