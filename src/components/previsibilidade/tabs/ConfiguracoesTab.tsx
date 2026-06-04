@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Edit2, Trash2, Copy } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { AdicionarProdutoModal } from "../modals/AdicionarProdutoModal";
+import { AdicionarCanalPagoModal } from "../modals/AdicionarCanalPagoModal";
 import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
 
 // Seção A: PRODUTOS JURÍDICOS
@@ -135,6 +136,11 @@ export function ConfiguracoesTab() {
   // Modal de Produto
   const [openProdutoModal, setOpenProdutoModal] = useState(false);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
+
+  // Modal de Canal Pago
+  const [openCanalPagoModal, setOpenCanalPagoModal] = useState(false);
+  const [editingCanalPago, setEditingCanalPago] = useState<CanalPago | null>(null);
+
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
     id: string;
@@ -175,6 +181,56 @@ export function ConfiguracoesTab() {
       };
       setProdutos([...produtos, newProduto]);
     }
+  };
+
+  // Handlers Canal Pago
+  const handleAddCanalPago = (data: Omit<CanalPago, "id">) => {
+    const newCanal: CanalPago = {
+      ...data,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    setCanaisPago([...canaisPago, newCanal]);
+  };
+
+  const handleEditCanalPago = (data: Omit<CanalPago, "id">) => {
+    if (editingCanalPago) {
+      setCanaisPago(
+        canaisPago.map((c) =>
+          c.id === editingCanalPago.id ? { ...c, ...data } : c
+        )
+      );
+      setEditingCanalPago(null);
+    }
+  };
+
+  const handleDeleteCanalPago = (id: string) => {
+    setCanaisPago(canaisPago.filter((c) => c.id !== id));
+  };
+
+  const handleDuplicateCanalPago = (id: string) => {
+    const canalToDuplicate = canaisPago.find((c) => c.id === id);
+    if (canalToDuplicate) {
+      const newCanal: CanalPago = {
+        ...canalToDuplicate,
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        obs: `${canalToDuplicate.obs} (Cópia)`,
+      };
+      setCanaisPago([...canaisPago, newCanal]);
+    }
+  };
+
+  const handleSaveCanalPago = (data: Omit<CanalPago, "id">) => {
+    if (editingCanalPago) {
+      handleEditCanalPago(data);
+    } else {
+      handleAddCanalPago(data);
+    }
+    setOpenCanalPagoModal(false);
+  };
+
+  const openEditCanalPago = (canal: CanalPago) => {
+    setEditingCanalPago(canal);
+    setOpenCanalPagoModal(true);
   };
 
   const handleSaveProduto = (data: Omit<Produto, "id">) => {
@@ -289,9 +345,20 @@ export function ConfiguracoesTab() {
 
       {/* SEÇÃO B: CANAIS DE TRÁFEGO PAGO */}
       <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          🔵 Seção B: CANAIS DE TRÁFEGO PAGO
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            🔵 Seção B: CANAIS DE TRÁFEGO PAGO
+          </h3>
+          <button
+            onClick={() => {
+              setEditingCanalPago(null);
+              setOpenCanalPagoModal(true);
+            }}
+            className="flex items-center gap-2 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" /> Adicionar Canal
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -302,6 +369,7 @@ export function ConfiguracoesTab() {
                 <th className="px-4 py-2 text-right font-semibold">Conv. Clique→Lead</th>
                 <th className="px-4 py-2 text-right font-semibold">CPL Meta</th>
                 <th className="px-4 py-2 text-left font-semibold">Observações</th>
+                <th className="px-4 py-2 text-center font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -326,6 +394,31 @@ export function ConfiguracoesTab() {
                     R$ {canal.cplMeta.toLocaleString("pt-BR")}
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{canal.obs}</td>
+                  <td className="px-4 py-3 text-center space-x-2">
+                    <button
+                      onClick={() => openEditCanalPago(canal)}
+                      className="inline text-blue-600 hover:text-blue-700"
+                      title="Editar"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setDeleteConfirm({ open: true, id: canal.id, type: "canal_pago" })
+                      }
+                      className="inline text-red-600 hover:text-red-700"
+                      title="Deletar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDuplicateCanalPago(canal.id)}
+                      className="inline text-green-600 hover:text-green-700"
+                      title="Duplicar"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -387,14 +480,27 @@ export function ConfiguracoesTab() {
         existingNomes={produtos.map((p) => p.nome)}
       />
 
+      <AdicionarCanalPagoModal
+        open={openCanalPagoModal}
+        onOpenChange={(open) => {
+          setOpenCanalPagoModal(open);
+          if (!open) setEditingCanalPago(null);
+        }}
+        onSave={handleSaveCanalPago}
+        editingCanal={editingCanalPago}
+        existingNomes={canaisPago.map((c) => c.nome)}
+      />
+
       <ConfirmacaoDeleteDialog
         open={deleteConfirm.open}
         onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
-        title="Deletar Produto?"
-        description="Esta ação não pode ser desfeita. O produto será permanentemente removido."
+        title={deleteConfirm.type === "produto" ? "Deletar Produto?" : "Deletar Canal?"}
+        description="Esta ação não pode ser desfeita. O item será permanentemente removido."
         onConfirm={() => {
           if (deleteConfirm.type === "produto") {
             handleDeleteProduto(deleteConfirm.id);
+          } else if (deleteConfirm.type === "canal_pago") {
+            handleDeleteCanalPago(deleteConfirm.id);
           }
           setDeleteConfirm({ open: false, id: "", type: "produto" });
         }}
