@@ -100,6 +100,101 @@ export function FechamentosTab() {
     }
   };
 
+  // Importar dados do localStorage
+  const handleImportFromLocalStorage = async () => {
+    try {
+      const localData = localStorage.getItem("previsibilidade_fechamentos");
+      if (!localData) {
+        alert("Nenhum dado encontrado no localStorage");
+        return;
+      }
+
+      const dados = JSON.parse(localData);
+      if (!Array.isArray(dados) || dados.length === 0) {
+        alert("localStorage vazio ou formato inválido");
+        return;
+      }
+
+      // Transformar dados do localStorage para o formato da API
+      const payload = {
+        fechamentos: dados.map((d: any) => ({
+          data: d.data,
+          cliente: d.cliente,
+          produtoId: "prod-1",
+          area: d.area?.toLowerCase() || "previdenciario",
+          canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Orgânico") ? "organico" : "metaAds",
+          setor: d.setor || "Recepção",
+          obs: d.obs || "",
+          situacao: d.situacao?.toLowerCase().replace(/ /g, "") || "emAndamento",
+          honorarios: d.honorarios || 0,
+        })),
+      };
+
+      const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Erro ao importar");
+      const result = await res.json();
+      alert(`✅ ${result.created} contratos importados com sucesso!`);
+
+      // Recarregar dados
+      const reloadRes = await fetch("/api/previsibilidade/fechamentos");
+      const newData = await reloadRes.json();
+      setFechamentos(newData);
+    } catch (err) {
+      alert("❌ Erro na importação: " + (err instanceof Error ? err.message : "desconhecido"));
+    }
+  };
+
+  // Exportar dados para CSV
+  const handleExportCSV = () => {
+    if (fechamentos.length === 0) {
+      alert("Nenhum dado para exportar");
+      return;
+    }
+
+    const headers = ["Data", "Cliente", "Produto", "Área", "Canal", "Setor", "Status", "Honorários"];
+    const rows = fechamentos.map((f) => [
+      f.data,
+      f.cliente,
+      f.produto,
+      f.area,
+      f.canal,
+      f.setor || "",
+      f.situacao,
+      f.honorarios || "",
+    ]);
+
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Exportar dados para JSON
+  const handleExportJSON = () => {
+    if (fechamentos.length === 0) {
+      alert("Nenhum dado para exportar");
+      return;
+    }
+
+    const json = JSON.stringify({ fechamentos, exportedAt: new Date().toISOString() }, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fechamentos_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const totalFechamentos = fechamentos.length;
   const totalHonorarios = fechamentos.reduce((sum, f) => sum + (f.honorarios || 0), 0);
 
@@ -142,22 +237,45 @@ export function FechamentosTab() {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           📋 CONTROLE DE PRAZOS E STATUS
         </h3>
-        <button
-          onClick={() => handleAdd({
-            data: new Date().toISOString().split('T')[0],
-            cliente: "",
-            produto: "BPC/LOAS",
-            area: "Previdenciário",
-            canal: "Meta Ads",
-            setor: "Triagem",
-            obs: "",
-            situacao: "Em Andamento",
-            honorarios: 0,
-          })}
-          className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" /> Novo Contrato
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleImportFromLocalStorage}
+            className="flex items-center gap-2 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            title="Importar do navegador"
+          >
+            📥 Importar
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+            title="Exportar como CSV"
+          >
+            📊 CSV
+          </button>
+          <button
+            onClick={handleExportJSON}
+            className="flex items-center gap-2 rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            title="Exportar como JSON"
+          >
+            📄 JSON
+          </button>
+          <button
+            onClick={() => handleAdd({
+              data: new Date().toISOString().split('T')[0],
+              cliente: "",
+              produto: "BPC/LOAS",
+              area: "Previdenciário",
+              canal: "metaAds",
+              setor: "Triagem",
+              obs: "",
+              situacao: "emAndamento",
+              honorarios: 0,
+            })}
+            className="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" /> Novo Contrato
+          </button>
+        </div>
       </div>
 
       {fechamentos.length === 0 ? (
