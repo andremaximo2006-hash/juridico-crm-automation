@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit2, Trash2, Copy } from "lucide-react";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useState, useEffect } from "react";
+import { Plus, Edit2, Trash2, Copy, Loader } from "lucide-react";
 import { ConfirmacaoDeleteDialog } from "../dialogs/ConfirmacaoDeleteDialog";
 
 interface Fechamento {
@@ -12,91 +11,114 @@ interface Fechamento {
   produto: string;
   area: string;
   canal: string;
-  setor: string;
-  obs: string;
+  setor?: string | null;
+  obs?: string | null;
   situacao: string;
-  honorarios: number;
+  honorarios?: number | null;
 }
 
-const FECHAMENTOS_EXEMPLO: Fechamento[] = [
-  {
-    id: "1",
-    data: "2026-05-15",
-    cliente: "João Silva",
-    produto: "BPC/LOAS",
-    area: "Previdenciário",
-    canal: "Meta Ads",
-    setor: "Iniciais",
-    obs: "Processo em andamento",
-    situacao: "Em Andamento",
-    honorarios: 6484,
-  },
-  {
-    id: "2",
-    data: "2026-05-20",
-    cliente: "Maria Santos",
-    produto: "Salário Maternidade",
-    area: "Previdenciário",
-    canal: "Orgânico",
-    setor: "Recepção",
-    obs: "Documentação completa",
-    situacao: "Benefício Concedido",
-    honorarios: 4200,
-  },
-];
-
-const AREAS = ["Previdenciário", "Trabalhista", "Família", "Cível"];
-const CANAIS = ["🔵 Meta Ads", "🟠 Orgânico", "🌐 Google Ads", "📱 TikTok"];
+const AREAS = ["Previdenciário", "Trabalhista", "Família", "Cível", "Outro"];
+const CANAIS = ["metaAds", "googleAds", "organico", "tiktokAds", "outro"];
 const SETORES = ["Triagem", "Iniciais", "Recepção", "Relacionamento"];
 const SITUACOES = [
-  "Em Andamento",
-  "Benefício Concedido",
-  "Benefício Negado",
-  "Sem Viabilidade",
-  "Sem Retorno",
-  "Desistência",
-  "Morreu",
-  "Acordo",
-  "Encerrado",
-  "Pendente",
+  "beneficioConcedido",
+  "beneficioNegado",
+  "emAndamento",
+  "semViabilidade",
 ];
 
 export function FechamentosTab() {
-  const [fechamentos, setFechamentos] = useLocalStorage<Fechamento[]>(
-    "previsibilidade_fechamentos",
-    FECHAMENTOS_EXEMPLO
-  );
+  const [fechamentos, setFechamentos] = useState<Fechamento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({
     open: false,
     id: "",
   });
 
-  const handleAdd = (data: Omit<Fechamento, "id">) => {
-    const newFechamento: Fechamento = {
-      ...data,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  // Carregar fechamentos da API
+  useEffect(() => {
+    const loadFechamentos = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/previsibilidade/fechamentos");
+        if (!res.ok) throw new Error("Erro ao carregar fechamentos");
+        const data = await res.json();
+        setFechamentos(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro desconhecido");
+        setFechamentos([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    setFechamentos([...fechamentos, newFechamento]);
+
+    loadFechamentos();
+  }, []);
+
+  // Adicionar novo fechamento
+  const handleAdd = async (data: Omit<Fechamento, "id">) => {
+    try {
+      const res = await fetch("/api/previsibilidade/fechamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Erro ao criar fechamento");
+      const newFechamento = await res.json();
+      setFechamentos([...fechamentos, newFechamento]);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao criar fechamento");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setFechamentos(fechamentos.filter((f) => f.id !== id));
+  // Deletar fechamento
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/previsibilidade/fechamentos/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Erro ao deletar fechamento");
+      setFechamentos(fechamentos.filter((f) => f.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao deletar fechamento");
+    }
   };
 
-  const handleDuplicate = (id: string) => {
+  // Duplicar fechamento
+  const handleDuplicate = async (id: string) => {
     const fechToDuplicate = fechamentos.find((f) => f.id === id);
     if (fechToDuplicate) {
-      const newFechamento: Fechamento = {
-        ...fechToDuplicate,
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      const { id: _, ...dataWithoutId } = fechToDuplicate;
+      await handleAdd({
+        ...dataWithoutId,
         obs: `${fechToDuplicate.obs} (Cópia)`,
-      };
-      setFechamentos([...fechamentos, newFechamento]);
+      });
     }
   };
 
   const totalFechamentos = fechamentos.length;
-  const totalHonorarios = fechamentos.reduce((sum, f) => sum + f.honorarios, 0);
+  const totalHonorarios = fechamentos.reduce((sum, f) => sum + (f.honorarios || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="h-6 w-6 animate-spin text-blue-600" />
+        <span className="ml-2 text-slate-600">Carregando fechamentos...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+        <p className="text-red-600 dark:text-red-400">❌ Erro ao carregar fechamentos: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -112,7 +134,7 @@ export function FechamentosTab() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <p className="text-sm text-slate-600 dark:text-slate-400">Taxa Conversão</p>
-          <p className="text-3xl font-bold text-blue-600">{((totalFechamentos / 50) * 100).toFixed(0)}%</p>
+          <p className="text-3xl font-bold text-blue-600">{totalFechamentos > 0 ? ((totalFechamentos / 50) * 100).toFixed(0) : "0"}%</p>
         </div>
       </div>
 
@@ -138,66 +160,72 @@ export function FechamentosTab() {
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-gray-800">
-              <th className="px-4 py-3 text-left font-semibold">Data</th>
-              <th className="px-4 py-3 text-left font-semibold">Cliente</th>
-              <th className="px-4 py-3 text-left font-semibold">Produto</th>
-              <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Área</th>
-              <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Canal</th>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
-              <th className="px-4 py-3 text-right font-semibold">Honorários</th>
-              <th className="px-4 py-3 text-center font-semibold">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fechamentos.map((fech) => (
-              <tr key={fech.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
-                <td className="px-4 py-3 text-sm text-slate-600">{fech.data}</td>
-                <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{fech.cliente}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{fech.produto}</td>
-                <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.area}</td>
-                <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.canal}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
-                      fech.situacao === "Benefício Concedido"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                    }`}
-                  >
-                    {fech.situacao}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right font-medium text-green-600">
-                  {fech.honorarios ? `R$ ${fech.honorarios.toLocaleString("pt-BR")}` : "—"}
-                </td>
-                <td className="px-4 py-3 text-center space-x-2">
-                  <button className="inline text-blue-600 hover:text-blue-700" title="Editar">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm({ open: true, id: fech.id })}
-                    className="inline text-red-600 hover:text-red-700"
-                    title="Deletar"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDuplicate(fech.id)}
-                    className="inline text-green-600 hover:text-green-700"
-                    title="Duplicar"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </td>
+      {fechamentos.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-800">
+          <p className="text-slate-600 dark:text-slate-400">Nenhum fechamento registrado. Clique em "Novo Contrato" para começar.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-gray-800">
+                <th className="px-4 py-3 text-left font-semibold">Data</th>
+                <th className="px-4 py-3 text-left font-semibold">Cliente</th>
+                <th className="px-4 py-3 text-left font-semibold">Produto</th>
+                <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Área</th>
+                <th className="px-4 py-3 text-left font-semibold bg-blue-50 dark:bg-blue-900/10">Canal</th>
+                <th className="px-4 py-3 text-left font-semibold">Status</th>
+                <th className="px-4 py-3 text-right font-semibold">Honorários</th>
+                <th className="px-4 py-3 text-center font-semibold">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {fechamentos.map((fech) => (
+                <tr key={fech.id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-4 py-3 text-sm text-slate-600">{fech.data}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{fech.cliente}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{fech.produto}</td>
+                  <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.area}</td>
+                  <td className="px-4 py-3 bg-blue-50 dark:bg-blue-900/10 text-sm">{fech.canal}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                        fech.situacao === "beneficioConcedido"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      }`}
+                    >
+                      {fech.situacao}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-green-600">
+                    {fech.honorarios ? `R$ ${fech.honorarios.toLocaleString("pt-BR")}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-center space-x-2">
+                    <button className="inline text-blue-600 hover:text-blue-700" title="Editar">
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm({ open: true, id: fech.id })}
+                      className="inline text-red-600 hover:text-red-700"
+                      title="Deletar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(fech.id)}
+                      className="inline text-green-600 hover:text-green-700"
+                      title="Duplicar"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <ConfirmacaoDeleteDialog
         open={deleteConfirm.open}
