@@ -6,7 +6,7 @@ const SECRET = new TextEncoder().encode(
 );
 
 const COOKIE_NAME = "juridico_session";
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/admin/reset-password"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
