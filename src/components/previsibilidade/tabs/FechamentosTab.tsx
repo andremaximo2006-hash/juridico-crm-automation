@@ -126,55 +126,66 @@ export function FechamentosTab() {
     }
   };
 
-  // Importar dados do localStorage
-  const handleImportFromLocalStorage = async () => {
+  // Importar dados de arquivo JSON
+  const handleImportFromFile = async () => {
     try {
-      const localData = localStorage.getItem("previsibilidade_fechamentos");
-      if (!localData) {
-        alert("Nenhum dado encontrado no localStorage");
-        return;
-      }
+      // Criar input file invisível
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json";
 
-      const dados = JSON.parse(localData);
-      if (!Array.isArray(dados) || dados.length === 0) {
-        alert("localStorage vazio ou formato inválido");
-        return;
-      }
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-      // Transformar dados do localStorage para o formato da API
-      const payload = {
-        fechamentos: dados.map((d: any) => {
-          const areaNormalizada = normalizeText(d.area || "previdenciario");
-          const situacaoNormalizada = normalizeText(d.situacao || "emandamento");
+        const text = await file.text();
+        const jsonData = JSON.parse(text);
 
-          return {
-            data: d.data,
-            cliente: d.cliente,
-            produtoId: "prod-1",
-            area: (CONVERSAO_AREA[areaNormalizada as keyof typeof CONVERSAO_AREA] || areaNormalizada) as any,
-            canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Orgânico") ? "organico" : "metaAds",
-            setor: d.setor || "Recepção",
-            obs: d.obs || "",
-            situacao: (CONVERSAO_SITUACAO[situacaoNormalizada as keyof typeof CONVERSAO_SITUACAO] || situacaoNormalizada) as any,
-            honorarios: d.honorarios || 0,
-          };
-        }),
+        // Suportar ambos os formatos: { fechamentos: [...] } ou [...]
+        let dados = Array.isArray(jsonData) ? jsonData : jsonData.fechamentos;
+
+        if (!Array.isArray(dados) || dados.length === 0) {
+          alert("❌ Formato inválido. Esperado: { fechamentos: [...] } ou [...]");
+          return;
+        }
+
+        // Transformar dados do arquivo para o formato da API
+        const payload = {
+          fechamentos: dados.map((d: any) => {
+            const areaNormalizada = normalizeText(d.area || "previdenciario");
+            const situacaoNormalizada = normalizeText(d.situacao || "emandamento");
+
+            return {
+              data: d.data,
+              cliente: d.cliente,
+              produtoId: d.produtoId || "prod-1",
+              area: (CONVERSAO_AREA[areaNormalizada as keyof typeof CONVERSAO_AREA] || areaNormalizada) as any,
+              canal: d.canal?.includes("Meta") ? "metaAds" : d.canal?.includes("Google") ? "googleAds" : d.canal?.includes("TikTok") || d.canal?.includes("tiktok") ? "tiktokAds" : d.canal?.includes("Orgânico") || d.canal === "organico" ? "organico" : d.canal || "metaAds",
+              setor: d.setor || "Recepção",
+              obs: d.obs || "",
+              situacao: (CONVERSAO_SITUACAO[situacaoNormalizada as keyof typeof CONVERSAO_SITUACAO] || situacaoNormalizada) as any,
+              honorarios: d.honorarios || 0,
+            };
+          }),
+        };
+
+        const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error("Erro ao importar");
+        const result = await res.json();
+        alert(`✅ ${result.created} de ${result.total} contratos importados com sucesso!`);
+
+        // Recarregar dados
+        const reloadRes = await fetch("/api/previsibilidade/fechamentos");
+        const newData = await reloadRes.json();
+        setFechamentos(newData);
       };
 
-      const res = await fetch("/api/previsibilidade/fechamentos/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error("Erro ao importar");
-      const result = await res.json();
-      alert(`✅ ${result.created} contratos importados com sucesso!`);
-
-      // Recarregar dados
-      const reloadRes = await fetch("/api/previsibilidade/fechamentos");
-      const newData = await reloadRes.json();
-      setFechamentos(newData);
+      input.click();
     } catch (err) {
       alert("❌ Erro na importação: " + (err instanceof Error ? err.message : "desconhecido"));
     }
@@ -270,9 +281,9 @@ export function FechamentosTab() {
         </h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleImportFromLocalStorage}
+            onClick={handleImportFromFile}
             className="flex items-center gap-2 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-            title="Importar do navegador"
+            title="Importar arquivo JSON"
           >
             📥 Importar
           </button>
