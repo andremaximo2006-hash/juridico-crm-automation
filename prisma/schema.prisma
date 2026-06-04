@@ -155,6 +155,118 @@ enum MarketingChannel {
   other
 }
 
+// ─── OPERACIONAL KANBAN ENUMS ─────────────────────────────────────────────
+
+enum AreaAtuacao {
+  Previdenciario
+  Trabalhista
+  Civil
+  Familia
+  Tributario
+}
+
+enum TipoRequerimento {
+  RequerimentoAdministrativo
+  PeticaoInicial
+  InicialJudicial
+  MandadoDeSeguranca
+  MinutaDeAcordo
+  Contestacao
+  Replica
+  PeticaoIntermediaria
+  RecursoOrdinario
+  RecursoInominado
+  RecursoEspecial
+  EmbargosDeDeclaracao
+  AgravoDeInstrumento
+  AgravoDePeticao
+  Apelacao
+  CumprimentoDeSentenca
+  CumprimentoDeExigencia
+  HabilitacaoEmExecucao
+  EmendaAInicial
+  RazoeFinais
+  Contrarrazoes
+  Impugnacao
+  DefesaIDPJ
+  AnaliseDeViabilidade
+}
+
+enum Responsavel {
+  DraGabrielle
+  DrThauan
+  DrRafael
+  NicoliMoreira
+  CinthiaFerreira
+  DanielMartins
+  VanderliFernandes
+KailaneSantos
+  FhellipeMatheus
+  HeloisaEstag
+  GabriellyEstag
+  GiuliaEstag
+}
+
+enum StatusCadSenha {
+  Vazio
+  Pendente
+  AguardandoAssinatura
+  OK
+  Bloqueado
+  Verificar
+}
+
+enum StatusConformidade {
+  Vazio
+  AguardandoLaudosMedicos
+  AguardandoCadUnico
+  AguardandoCadUnicoAtualizado
+  AguardandoDocumentos
+  AguardandoAcessoGOV
+  AguardandoExtratosBancarios
+  AguardandoTituloDeEleitor
+  Pendente
+  OK
+  SemViabilidade
+  Desistencia
+}
+
+enum StatusGuia {
+  GuiaEmitidaAguardandoPagamento
+  GuiaEmitidaPagamentoRealizado
+  GuiaEncaminhadaPagamentoRealizado
+  NaoEmitida
+}
+
+enum KanbanColuna {
+  novo
+  triagem
+  andamento
+  concluido
+}
+
+enum Prioridade {
+  baixa
+  normal
+  alta
+  urgente
+}
+
+enum ContribuicaoSM {
+  CI
+  FBR
+}
+
+enum QuemPagaSM {
+  GN
+  Cliente
+}
+
+enum NaturezaFicha {
+  LEAD
+  ORGANICO
+}
+
 // ─── MODELS ──────────────────────────────────────────────────────────────────
 
 model Lead {
@@ -529,6 +641,50 @@ model OperacionalEntry {
   updatedAt        DateTime  @updatedAt
 
   @@map("operacional_entries")
+}
+
+// ─── FICHA OPERACIONAL (NEW KANBAN MODEL) ─────────────────────────────────
+
+model FichaOperacional {
+  id                String              @id @default(cuid())
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Cliente
+  nome              String              // required
+  contato           String?             // WhatsApp format: "13 99999-9999"
+  natureza          NaturezaFicha       // LEAD | ORGANICO
+
+  // Processo
+  area              AreaAtuacao         // required
+  beneficio         String              // required — lookup from BENEFICIOS[area]
+  tipoRequerimento  TipoRequerimento?
+  numeroProcesso    String?             // e.g., "5003633-17.2025.4.03.6311"
+  dataEntrada       DateTime
+  dataProtocolo     DateTime?
+  numeroProtocolo   String?
+
+  // Responsável
+  responsavel       Responsavel         // required — team member
+  setor             String?             // "Recepção" | "Iniciais" | "Relacionamento"
+  coluna            KanbanColuna        @default(novo)
+  prioridade        Prioridade          @default(normal)
+
+  // Documentação
+  cadSenha          StatusCadSenha?
+  conformidade      StatusConformidade?
+
+  // Salário Maternidade (optional)
+  smContribuicao    ContribuicaoSM?
+  smDpp             DateTime?           // Data Prevista do Parto
+  smQuemPaga        QuemPagaSM?
+  smStatusGuia      StatusGuia?
+
+  // Text
+  observacoes       String?             @db.Text
+  historicoLog      String?             @db.Text  // append-only, ISO date + user + action
+
+  @@map("fichas_operacionais")
 }
 
 model AppSetting {
