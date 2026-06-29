@@ -1487,3 +1487,159 @@ model IAAnaliticsDia {
   @@unique([iaId, data])
   @@map("ia_analytics_dia")
 }
+
+// ─── EMAIL IA ─────────────────────────────────────────────────────────────────
+
+enum EmailStatus {
+  rascunho
+  agendado
+  enviando
+  enviado
+  falha
+}
+
+enum EmailInteracaoTipo {
+  aberto
+  clicado
+  descadastrado
+  reclamacao
+}
+
+// Template de Email
+model EmailTemplate {
+  id              String        @id @default(cuid())
+  nome            String
+  descricao       String?
+  assunto         String
+  corpo           String        // HTML
+  variaveis       String[]      @default([]) // lista de variáveis como {{nome}}, {{email}}
+  isAtivo         Boolean       @default(true) @map("is_ativo")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relações
+  campanhas       EmailCampanha[]
+  mensagens       EmailMensagem[]
+
+  @@index([isAtivo])
+  @@map("email_templates")
+}
+
+// Campanha de Email
+model EmailCampanha {
+  id              String        @id @default(cuid())
+  nome            String
+  descricao       String?
+  templateId      String        @map("template_id")
+  template        EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Destinatários
+  destinatarios   String[]      // emails
+  tagsDestino     String[]      @default([]) // para segmentar
+
+  // Status
+  status          EmailStatus   @default(rascunho)
+  agendadoEm      DateTime?     @map("agendado_em")
+  enviadoEm       DateTime?     @map("enviado_em")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Stats
+  totalDestina    Int           @default(0) @map("total_destinatarios")
+  enviados        Int           @default(0)
+  abertos         Int           @default(0)
+  clicados        Int           @default(0)
+  falhas          Int           @default(0)
+
+  // Relações
+  mensagens       EmailMensagem[]
+
+  @@index([status])
+  @@index([templateId])
+  @@map("email_campanhas")
+}
+
+// Mensagem de Email enviada
+model EmailMensagem {
+  id              String        @id @default(cuid())
+  campaignId      String        @map("campaign_id")
+  campanha        EmailCampanha @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  templateId      String        @map("template_id")
+  template        EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Destinatário
+  paraEmail       String        @map("para_email")
+  paraNome        String?       @map("para_nome")
+  parametros      Json          @default("{}") // valores para variáveis
+
+  // Status
+  status          EmailStatus   @default(enviando)
+  msgId           String?       @map("msg_id") // ID do provider (SendGrid, etc)
+  errorMsg        String?       @map("error_msg")
+
+  // Interações
+  abertoEm        DateTime?     @map("aberto_em")
+  clicadoEm       DateTime?     @map("clicado_em")
+  descadastradoEm DateTime?     @map("descadastrado_em")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  enviadoEm       DateTime?     @map("enviado_em")
+
+  // Relações
+  interacoes      EmailInteracao[]
+
+  @@index([campaignId])
+  @@index([templateId])
+  @@index([status])
+  @@index([paraEmail])
+  @@map("email_mensagens")
+}
+
+// Interação com Email
+model EmailInteracao {
+  id              String            @id @default(cuid())
+  mensagemId      String            @map("mensagem_id")
+  mensagem        EmailMensagem     @relation(fields: [mensagemId], references: [id], onDelete: Cascade)
+
+  tipo            EmailInteracaoTipo
+  ip              String?
+  userAgent       String?
+  timestamp       DateTime          @default(now())
+
+  @@index([mensagemId])
+  @@index([tipo])
+  @@map("email_interacoes")
+}
+
+// Configuração de Email
+model EmailConfig {
+  id              String        @id @default(cuid())
+  provider        String        // sendgrid, smtp, etc
+  apiKey          String?       @db.Text
+  fromEmail       String        @map("from_email")
+  fromName        String?       @map("from_name")
+
+  // SMTP config (se aplicável)
+  smtpHost        String?       @map("smtp_host")
+  smtpPort        Int?          @map("smtp_port")
+  smtpUser        String?       @map("smtp_user")
+  smtpPassword    String?       @db.Text @map("smtp_password")
+
+  // Configurações
+  isAtivo         Boolean       @default(true) @map("is_ativo")
+  webhookUrl      String?       @map("webhook_url")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@unique([provider])
+  @@map("email_configs")
+}
