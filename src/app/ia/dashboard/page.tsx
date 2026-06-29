@@ -96,31 +96,31 @@ export default function IADashboard() {
             </div>
           </Link>
 
-          {/* Marketing IA */}
-          <Link href="/ia/marketing">
+          {/* Email IA */}
+          <Link href="/ia/email">
             <div className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="text-purple-600" size={24} />
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <MessageCircle className="text-orange-600" size={24} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Marketing IA</h3>
-                    <p className="text-sm text-gray-500">Análise de campanhas</p>
+                    <h3 className="font-semibold text-gray-900">Email IA</h3>
+                    <p className="text-sm text-gray-500">Campanhas de email</p>
                   </div>
                 </div>
               </div>
               <div className="p-6">
                 <div className="text-sm text-gray-600 mb-4">
-                  ✅ Ativo | 📊 Ready
+                  ✅ Ativo | 📧 Ready
                 </div>
                 <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• Análise de ROI</li>
-                  <li>• Insights de campanha</li>
-                  <li>• Recomendações</li>
+                  <li>• Templates dinâmicos</li>
+                  <li>• Campanhas automáticas</li>
+                  <li>• Rastreamento de taxa</li>
                 </ul>
-                <button className="text-purple-600 font-medium text-sm hover:text-purple-700">
-                  Analisar →
+                <button className="text-orange-600 font-medium text-sm hover:text-orange-700">
+                  Ver Templates →
                 </button>
               </div>
             </div>
