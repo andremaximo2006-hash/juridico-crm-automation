@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (area) where.areaAtuacao = { contains: area, mode: "insensitive" };
   if (status) where.status = { contains: status, mode: "insensitive" };
 
-  const rows = await prisma.prazoEntry.findMany({
+  const rows = await prisma.prazosEntry.findMany({
     where,
     orderBy: [{ dataFinal: "asc" }, { cliente: "asc" }],
   });

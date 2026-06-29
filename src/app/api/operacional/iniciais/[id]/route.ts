@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
 
-  const entry = await prisma.inicialEntry.update({
+  const entry = await prisma.iniciaisEntry.update({
     where: { id },
     data: {
       cliente: body.cliente?.trim() || undefined,
@@ -36,6 +36,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.inicialEntry.delete({ where: { id } });
+  await prisma.iniciaisEntry.delete({ where: { id } });
   return new NextResponse(null, { status: 204 });
 }

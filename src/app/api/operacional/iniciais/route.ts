@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const mes = searchParams.get("mes");
 
   const where: Record<string, unknown> = {};
-  if (area) where.areaAtuacao = { contains: area, mode: "insensitive" };
+  if (area) where.area = { contains: area, mode: "insensitive" };
   if (responsavel) where.responsavel = { contains: responsavel, mode: "insensitive" };
   if (status) where.status = { contains: status, mode: "insensitive" };
   if (mes) {
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     where.dataInicial = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
   }
 
-  const entries = await prisma.inicialEntry.findMany({
+  const entries = await prisma.iniciaisEntry.findMany({
     where,
     orderBy: { dataInicial: "desc" },
   });
@@ -38,11 +38,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cliente obrigatório" }, { status: 400 });
   }
 
-  const entry = await prisma.inicialEntry.create({
+  const entry = await prisma.iniciaisEntry.create({
     data: {
       cliente: body.cliente.trim(),
       processo: body.processo?.trim() || null,
-      areaAtuacao: body.areaAtuacao?.trim() || null,
+      area: body.area?.trim() || null,
       tipoRequerimento: body.tipoRequerimento?.trim() || null,
       dataInicial: body.dataInicial ? new Date(body.dataInicial) : null,
       protocolo: body.protocolo?.trim() || null,

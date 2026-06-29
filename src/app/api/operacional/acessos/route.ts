@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.toLowerCase() ?? "";
 
-  const rows = await prisma.acessoEntry.findMany({
+  const rows = await prisma.acessosEntry.findMany({
     orderBy: { sistema: "asc" },
   });
 

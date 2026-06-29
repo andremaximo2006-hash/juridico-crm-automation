@@ -101,7 +101,7 @@ export default function OperacionalPage() {
       <FilterBar filters={filters} onFiltersChange={setFilters} />
 
       {/* Action Bar */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex gap-2 justify-between items-center">
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -109,6 +109,13 @@ export default function OperacionalPage() {
           <Plus size={18} />
           Nova Ficha
         </button>
+
+        <a
+          href="/operacional/configuracoes"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
+        >
+          ⚙️ Configurações
+        </a>
       </div>
 
       {/* Main Content */}

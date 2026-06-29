@@ -18,7 +18,7 @@ export async function PATCH(
     return isNaN(d.getTime()) ? null : d;
   }
 
-  const updated = await prisma.prazoEntry.update({
+  const updated = await prisma.prazosEntry.update({
     where: { id },
     data: {
       cliente:       body.cliente       ?? undefined,

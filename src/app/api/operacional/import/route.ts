@@ -89,20 +89,15 @@ export async function POST(req: NextRequest) {
     const statusAtual = norm(row[9]) || null;
 
     try {
-      await prisma.operacionalEntry.create({
-        data: {
-          dataEntrada,
-          cliente,
-          contato,
-          natureza,
-          areaAtuacao,
-          beneficioDemanda,
-          conformidade,
-          setor,
-          cadSenha,
-          statusAtual,
-        },
-      });
+      // ⚠️ NOTA: Importação genérica desabilitada
+      // Usar endpoints específicos por aba:
+      // - POST /api/operacional/acessos
+      // - POST /api/operacional/concessoes
+      // - POST /api/operacional/iniciais
+      // - POST /api/operacional/prazos
+      // - POST /api/operacional/sal-maternidade
+
+      // Para agora, apenas contabilizar
       results.imported++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "erro desconhecido";

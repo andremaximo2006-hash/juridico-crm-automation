@@ -57,16 +57,115 @@ export async function GET(req: NextRequest) {
     ];
   }
 
-  // Fetch fichas
-  const [fichas, total] = await Promise.all([
+  // Fetch fichas from MAIN table + ALL ABASE tables
+  const [fichasPrincipal, cadsenha, iniciais, pagina16, salmaternidade] = await Promise.all([
     prisma.fichaOperacional.findMany({
       where,
       orderBy: { dataEntrada: "desc" },
-      skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.fichaOperacional.count({ where }),
+    prisma.cadSenhaEntry.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.iniciaisEntry.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.pagina16Entry.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.salMaternidadeEntry.findMany({
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  // Convert aba entries to fichas format
+  const fichasAbas = [
+    ...cadsenha.map((c: any) => ({
+      id: c.id,
+      nome: c.cliente,
+      contato: c.contato,
+      natureza: "LEAD",
+      area: "Previdenciario",
+      beneficio: "CadSenha",
+      numeroProcesso: null,
+      dataEntrada: c.createdAt,
+      dataProtocolo: null,
+      responsavel: "Sistema",
+      setor: "CadSenha",
+      coluna: "novo",
+      prioridade: "normal",
+      cadSenha: c.status,
+      observacoes: `[${c.status}] CadSenha`,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    })),
+    ...iniciais.map((i: any) => ({
+      id: i.id,
+      nome: i.cliente,
+      contato: null,
+      natureza: "ORGANICO",
+      area: i.area || "Previdenciario",
+      beneficio: i.tipoRequerimento || "Inicial",
+      numeroProcesso: i.processo,
+      dataEntrada: i.dataInicial,
+      dataProtocolo: null,
+      responsavel: i.responsavel || "Sistema",
+      setor: "Iniciais",
+      coluna: "triagem",
+      prioridade: "normal",
+      cadSenha: null,
+      observacoes: `[INICIAIS] ${i.observacoes || ""}`,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    })),
+    ...pagina16.map((p: any) => ({
+      id: p.id,
+      nome: p.cliente,
+      contato: null,
+      natureza: "LEAD",
+      area: p.area || "Previdenciario",
+      beneficio: p.demanda || "Demanda",
+      numeroProcesso: null,
+      dataEntrada: p.data,
+      dataProtocolo: null,
+      responsavel: p.responsavel || "Sistema",
+      setor: "Página16",
+      coluna: "novo",
+      prioridade: "normal",
+      cadSenha: null,
+      observacoes: `[PG16] ${p.observacao || ""}`,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    })),
+    ...salmaternidade.map((s: any) => ({
+      id: s.id,
+      nome: s.cliente,
+      contato: s.contato,
+      natureza: "ORGANICO",
+      area: "Previdenciario",
+      beneficio: s.beneficio || "Salário Maternidade",
+      numeroProcesso: null,
+      dataEntrada: s.createdAt,
+      dataProtocolo: null,
+      responsavel: "Sistema",
+      setor: "SalMaternidade",
+      coluna: s.status === "concluido" ? "concluido" : "andamento",
+      prioridade: "normal",
+      cadSenha: null,
+      smDpp: s.dppOuDn,
+      observacoes: `[SAL.MAT] ${s.status || ""}`,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    })),
+  ];
+
+  // Combine all fichas
+  const fichas = [...fichasPrincipal, ...fichasAbas];
+  const total = fichas.length;
 
   // Post-filter for computed conditions
   let filtered = fichas.map(enrichFicha);

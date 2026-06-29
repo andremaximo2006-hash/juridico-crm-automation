@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.toLowerCase() ?? "";
 
-  const rows = await prisma.concessaoEntry.findMany({
+  const rows = await prisma.concessoesEntry.findMany({
     orderBy: [{ data: "desc" }, { cliente: "asc" }],
   });
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         (r) =>
           r.cliente.toLowerCase().includes(q) ||
           (r.beneficio ?? "").toLowerCase().includes(q) ||
-          (r.valorHonorarios ?? "").toLowerCase().includes(q)
+          (r.boletos ?? "").toLowerCase().includes(q)
       )
     : rows;
 

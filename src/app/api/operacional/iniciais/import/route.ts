@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     const protocolo = formatDateValue(row[8]);
 
     try {
-      await prisma.inicialEntry.create({
+      await prisma.iniciaisEntry.create({
         data: {
           cliente,
           processo: norm(row[4]) || null,
