@@ -1643,3 +1643,114 @@ model EmailConfig {
   @@unique([provider])
   @@map("email_configs")
 }
+
+// ─── SMS IA ───────────────────────────────────────────────────────────────────
+
+enum SMSStatus {
+  rascunho
+  agendado
+  enviando
+  enviado
+  falha
+}
+
+// Template de SMS
+model SMSTemplate {
+  id              String        @id @default(cuid())
+  nome            String
+  descricao       String?
+  conteudo        String        // Máx 160 caracteres
+  variaveis       String[]      @default([])
+  isAtivo         Boolean       @default(true) @map("is_ativo")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  campanhas       SMSCampanha[]
+  mensagens       SMSMensagem[]
+
+  @@index([isAtivo])
+  @@map("sms_templates")
+}
+
+// Campanha SMS
+model SMSCampanha {
+  id              String        @id @default(cuid())
+  nome            String
+  descricao       String?
+  templateId      String        @map("template_id")
+  template        SMSTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Destinatários
+  telefones       String[]      // lista de números
+  tagsDestino     String[]      @default([])
+
+  // Status
+  status          SMSStatus     @default(rascunho)
+  agendadoEm      DateTime?     @map("agendado_em")
+  enviadoEm       DateTime?     @map("enviado_em")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Stats
+  totalDestina    Int           @default(0) @map("total_destinatarios")
+  enviados        Int           @default(0)
+  entregues       Int           @default(0)
+  falhas          Int           @default(0)
+
+  mensagens       SMSMensagem[]
+
+  @@index([status])
+  @@index([templateId])
+  @@map("sms_campanhas")
+}
+
+// Mensagem SMS enviada
+model SMSMensagem {
+  id              String        @id @default(cuid())
+  campaignId      String        @map("campaign_id")
+  campanha        SMSCampanha   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  templateId      String        @map("template_id")
+  template        SMSTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  // Destinatário
+  paraNumero      String        @map("para_numero")
+  parametros      Json          @default("{}")
+
+  // Status
+  status          SMSStatus     @default(enviando)
+  msgId           String?       @map("msg_id") // ID do provider
+  errorMsg        String?       @map("error_msg")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  enviadoEm       DateTime?     @map("enviado_em")
+  entregueEm      DateTime?     @map("entregue_em")
+
+  @@index([campaignId])
+  @@index([templateId])
+  @@index([status])
+  @@map("sms_mensagens")
+}
+
+// Configuração SMS
+model SMSConfig {
+  id              String        @id @default(cuid())
+  provider        String        // twilio, aws-sns, etc
+  apiKey          String?       @db.Text
+  apiSecret       String?       @db.Text
+  accountSid      String?       @map("account_sid")
+  fromNumber      String        @map("from_number")
+
+  isAtivo         Boolean       @default(true) @map("is_ativo")
+  webhookUrl      String?       @map("webhook_url")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@unique([provider])
+  @@map("sms_configs")
+}
