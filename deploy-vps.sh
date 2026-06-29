@@ -1,177 +1,217 @@
 #!/bin/bash
 
-###############################################################################
-#                    🚀 DEPLOY AUTOMATIZADO PARA VPS                         #
-#                                                                             #
-# Execute este script no seu COMPUTADOR:                                     #
-#   bash deploy-vps.sh                                                        #
-#                                                                             #
-# Ele vai fazer TUDO automaticamente!                                        #
-###############################################################################
+# 🚀 Script de Deploy para VPS - WhatsApp IA SDR MVP
+# Executa tudo direto na VPS: migration, seed, build, restart
 
 set -e
 
-echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║          🚀 INICIANDO DEPLOY PARA VPS                         ║"
-echo "╚════════════════════════════════════════════════════════════════╝"
-echo ""
-
-# Configurações
-SERVER_USER="root"
-SERVER_HOST="gabriel.server.com"
-SSH_KEY="$HOME/.ssh/vps_key"
-SERVER_PATH="/var/www"
-TARBALL="/tmp/crm-final.tar.gz"
-
-# Cores
+# Cores para output
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Verificações iniciais
-echo -e "${YELLOW}1. Verificando pré-requisitos...${NC}"
+# Dados da VPS
+VPS_IP="2.25.128.221"
+VPS_USER="root"
+VPS_PORT="22"
+PROJECT_DIR="/root/juridico-crm-automation"
 
-if [ ! -f "$TARBALL" ]; then
-    echo -e "${RED}❌ Tarball não encontrado: $TARBALL${NC}"
-    echo "Execute primeiro: cd ~/juridico-crm-automation && tar --exclude=node_modules --exclude=.git -czf /tmp/crm-final.tar.gz ."
-    exit 1
-fi
-
-if [ ! -f "$SSH_KEY" ]; then
-    echo -e "${RED}❌ SSH key não encontrada: $SSH_KEY${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Pré-requisitos OK${NC}"
+echo -e "${BLUE}🚀 DEPLOY VPS - WhatsApp IA SDR MVP${NC}"
+echo -e "${YELLOW}Alvo: $VPS_IP${NC}"
 echo ""
 
-# Upload tarball
-echo -e "${YELLOW}2. Enviando tarball para servidor (pode levar alguns minutos)...${NC}"
-scp -i "$SSH_KEY" "$TARBALL" "$SERVER_USER@$SERVER_HOST:/tmp/" || {
-    echo -e "${RED}❌ Erro ao fazer upload${NC}"
-    exit 1
+# ============================================================
+# PASSO 1: Pull do Git
+# ============================================================
+echo -e "${BLUE}📥 PASSO 1: Git Pull${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+cd /root/juridico-crm-automation
+git pull origin main
+echo "✅ Git pull completo"
+EOF
+
+echo ""
+
+# ============================================================
+# PASSO 2: Install Dependencies
+# ============================================================
+echo -e "${BLUE}📦 PASSO 2: Install Dependencies${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+cd /root/juridico-crm-automation
+npm install --legacy-peer-deps
+echo "✅ Dependências instaladas"
+EOF
+
+echo ""
+
+# ============================================================
+# PASSO 3: Prisma Migration
+# ============================================================
+echo -e "${BLUE}🗄️  PASSO 3: Prisma Migration${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+cd /root/juridico-crm-automation
+npx prisma migrate deploy
+echo "✅ Migration executada"
+EOF
+
+echo ""
+
+# ============================================================
+# PASSO 4: Prisma Seed
+# ============================================================
+echo -e "${BLUE}🌱 PASSO 4: Seed de Templates${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+cd /root/juridico-crm-automation
+
+# Criar seed.ts se não existir
+if [ ! -f prisma/seed.ts ]; then
+cat > prisma/seed.ts << 'SEED'
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🌱 Iniciando seed...");
+
+  // Template 1: SDR Previdenciário
+  const roteiro1 = await prisma.whatsAppRoteiro.create({
+    data: {
+      name: "Previdenciário",
+      description: "Qualifica leads de previdência",
+      is_active: true,
+      steps: {
+        create: [
+          {
+            order: 1,
+            pergunta: "Qual é o seu nome completo?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 2
+          },
+          {
+            order: 2,
+            pergunta: "Qual sua situação? (aposentadoria/pensão/BPC/outro)",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 3
+          },
+          {
+            order: 3,
+            pergunta: "Há quanto tempo está nessa situação?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 4
+          },
+          {
+            order: 4,
+            pergunta: "Qual seu CPF? (formato: 000.000.000-00)",
+            tipo: "text",
+            is_required: true,
+            regex: "^[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}$"
+          }
+        ]
+      }
+    }
+  });
+
+  // Template 2: SDR Família
+  const roteiro2 = await prisma.whatsAppRoteiro.create({
+    data: {
+      name: "Família",
+      description: "Qualifica leads de direito de família",
+      is_active: true,
+      steps: {
+        create: [
+          {
+            order: 1,
+            pergunta: "Qual é o seu nome?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 2
+          },
+          {
+            order: 2,
+            pergunta: "Qual sua situação? (divórcio/guarda/pensão/herança)",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 3
+          },
+          {
+            order: 3,
+            pergunta: "Tem filhos menores envolvidos?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 4
+          },
+          {
+            order: 4,
+            pergunta: "Qual seu CPF?",
+            tipo: "text",
+            is_required: true
+          }
+        ]
+      }
+    }
+  });
+
+  console.log("✅ Seed completo!");
+  console.log(\`   - Roteiro 1: \${roteiro1.name} (ID: \${roteiro1.id})\`);
+  console.log(\`   - Roteiro 2: \${roteiro2.name} (ID: \${roteiro2.id})\`);
 }
-echo -e "${GREEN}✅ Upload completo${NC}"
-echo ""
 
-# Deploy
-echo -e "${YELLOW}3. Executando deploy no servidor...${NC}"
-
-ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" << 'REMOTE_SCRIPT'
-
-set -e
-
-echo "═══════════════════════════════════════════════════════════════"
-echo "  INICIANDO DEPLOY NO SERVIDOR"
-echo "═══════════════════════════════════════════════════════════════"
-echo ""
-
-# Parar aplicação
-echo "▶ Parando aplicação..."
-pm2 stop juridico-crm 2>/dev/null || true
-sleep 2
-
-# Fazer backup
-echo "▶ Fazendo backup..."
-BACKUP_DIR="/tmp/backup-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BACKUP_DIR"
-cp -r /var/www/juridico-crm-automation/.next "$BACKUP_DIR/" 2>/dev/null || true
-echo "  Backup em: $BACKUP_DIR"
-
-# Limpar diretórios antigos
-echo "▶ Limpando diretórios antigos..."
-rm -rf /var/www/juridico-crm-automation/.next
-rm -rf /var/www/juridico-crm-automation/node_modules
-
-# Extrair novo código
-echo "▶ Extraindo novo código..."
-cd /var/www
-tar -xzf /tmp/crm-final.tar.gz
-
-# Instalar dependências
-echo "▶ Instalando dependências (pode levar 2-3 minutos)..."
-cd /var/www/juridico-crm-automation
-npm install --production > /tmp/npm-install.log 2>&1
-
-# Fazer build
-echo "▶ Compilando aplicação (pode levar 1-2 minutos)..."
-npm run build > /tmp/npm-build.log 2>&1
-
-# Criar server.js se não existir
-if [ ! -f "server.js" ]; then
-    echo "▶ Criando server.js..."
-    cat > server.js << 'SERVERJS'
-const { createServer } = require("http");
-const { parse } = require("url");
-const next = require("next");
-const path = require("path");
-
-const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev, dir: path.resolve(__dirname) });
-const handle = app.getRequestHandler();
-
-app.prepare().then(() => {
-  createServer((req, res) => {
-    const parsedUrl = parse(req.url, true);
-    handle(req, res, parsedUrl).catch((err) => {
-      console.error("Error handling request:", err);
-      res.statusCode = 500;
-      res.end("Internal Server Error");
-    });
-  }).listen(parseInt(process.env.PORT || "3000", 10), (err) => {
-    if (err) throw err;
-    console.log(`> Ready on http://localhost:${process.env.PORT || 3000}`);
-  });
-
-  process.on("SIGTERM", () => {
-    console.log("SIGTERM received, shutting down gracefully");
-    process.exit(0);
-  });
-});
-SERVERJS
+main()
+  .catch(e => {
+    console.error("❌ Erro no seed:", e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
+SEED
 fi
 
-# Reiniciar com PM2
-echo "▶ Reiniciando aplicação..."
-pm2 restart juridico-crm || pm2 start server.js --name "juridico-crm"
+npx ts-node prisma/seed.ts
+echo "✅ Seed executado"
+EOF
+
+echo ""
+
+# ============================================================
+# PASSO 5: Build
+# ============================================================
+echo -e "${BLUE}🏗️  PASSO 5: Build Next.js${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+cd /root/juridico-crm-automation
+npm run build
+echo "✅ Build completo"
+EOF
+
+echo ""
+
+# ============================================================
+# PASSO 6: Restart PM2
+# ============================================================
+echo -e "${BLUE}🔄 PASSO 6: Restart PM2${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+pm2 restart juridico-crm
 pm2 save
+echo "✅ PM2 reiniciado"
+EOF
 
-sleep 3
-
-# Verificar status
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  ✅ DEPLOY CONCLUÍDO"
-echo "═══════════════════════════════════════════════════════════════"
-echo ""
-echo "Status PM2:"
-pm2 status | grep juridico-crm || echo "Status não disponível"
-echo ""
-echo "Últimas linhas de log:"
-pm2 logs juridico-crm --lines 5
-echo ""
-echo "Teste local:"
-echo "  curl http://localhost:3000/login | head -5"
 echo ""
 
-REMOTE_SCRIPT
+# ============================================================
+# PASSO 7: Verificar Status
+# ============================================================
+echo -e "${BLUE}🏥 PASSO 7: Status${NC}"
+ssh -p $VPS_PORT $VPS_USER@$VPS_IP << 'EOF'
+pm2 list | grep juridico-crm
+echo ""
+echo "Últimas linhas do log:"
+tail -5 ~/.pm2/logs/juridico-crm-out.log 2>/dev/null || echo "(logs ainda não criados)"
+EOF
 
-echo -e "${GREEN}✅ Deploy concluído!${NC}"
 echo ""
-echo "═══════════════════════════════════════════════════════════════"
-echo "  📋 PRÓXIMOS PASSOS"
-echo "═══════════════════════════════════════════════════════════════"
+echo -e "${GREEN}✅ DEPLOY COMPLETO!${NC}"
+echo -e "${YELLOW}URL: https://crm.gabriellenunes.com.br${NC}"
 echo ""
-echo "1. Execute no servidor para verificar:"
-echo "   ssh -i ~/.ssh/vps_key root@gabriel.server.com"
-echo "   pm2 logs juridico-crm --lines 10"
-echo "   curl http://localhost:3000/login | head -5"
-echo ""
-echo "2. Teste com Node.js:"
-echo "   node test-login.js https://crm.gabriellenunes.com.br"
-echo ""
-echo "3. Se tudo OK, avise:"
-echo "   ✅ Deploy concluído e verificado!"
-echo ""
-echo "═══════════════════════════════════════════════════════════════"
