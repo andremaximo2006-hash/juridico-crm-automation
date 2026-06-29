@@ -330,6 +330,7 @@ model Client {
   cases          Case[]
   transactions   Transaction[]
   notifications  Notification[]
+  aiChats        AIChat[]
 
   @@map("clients")
 }
@@ -527,121 +528,157 @@ model User {
   transferredConversations    WhatsAppConversation[] @relation("ConversationsTransferredTo")
   assignedTickets             WhatsAppHumanTicket[] @relation("HumanTicketsAssignedTo")
 
+  // AI Atendimento Relations
+  aiConfiguration             AIConfiguration?
+  aiChats                     AIChat[]
+  aiAnalytics                 AIAnalytics[]
+
   @@map("users")
 }
 
-model SalMaternidadeEntry {
-  id           String   @id @default(cuid())
-  cliente      String
-  contato      String?
-  beneficio    String?
-  contribuicao String?
-  dppOuDn      String?
-  pagamento    String?
-  planejamento String?
-  status       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+// ⚠️ NOTA: Modelos antigos removidos - use FechamentosEntry, IniciaisEntry, PrazosEntry, etc
+// para manter compatibilidade com a estrutura de abas da planilha Excel
 
-  @@map("sal_maternidade_entries")
-}
+// ─── CONFIGURADOR OPERACIONAL (VISUAL CUSTOMIZATION) ────────────────────────
 
-model PrazoEntry {
-  id            String    @id @default(cuid())
-  cliente       String
-  processo      String?
-  areaAtuacao   String?
-  tipoPrazo     String?
-  dataInicial   DateTime?
-  dataFinal     DateTime?
-  responsavel   String?
-  status        String?
-  observacoes   String?
-  modificadoPor String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@map("prazo_entries")
-}
-
-model CadSenhaEntry {
+model ConfiguradorOperacional {
   id                String    @id @default(cuid())
-  entrada           DateTime?
-  cliente           String
-  contato           String?
-  natureza          String?
-  beneficio         String?
-  procuracao        String?
-  substabelecimento String?
-  rg                String?
-  status            String?
+  usuarioId         String?   // NULL = global; "user-id" = por usuário
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  @@map("cad_senha_entries")
+  // Cores das Áreas
+  corPrevidenciario String    @default("#3B82F6") // blue
+  corTrabalhista    String    @default("#10B981") // green
+  corCivil          String    @default("#F59E0B") // amber
+  corFamilia        String    @default("#EC4899") // pink
+  corTributario     String    @default("#8B5CF6") // purple
+
+  // Cores das Colunas Kanban
+  corNovoColuna     String    @default("#6B7280") // gray
+  corTriagemColuna  String    @default("#3B82F6") // blue
+  corAndamentoColuna String   @default("#F59E0B") // amber
+  corConcluidoColuna String   @default("#10B981") // green
+
+  // Labels das Colunas (customizáveis)
+  labelNovo         String    @default("Novo")
+  labelTriagem      String    @default("Triagem")
+  labelAndamento    String    @default("Andamento")
+  labelConcluido    String    @default("Concluído")
+
+  // Cores de Prioridade
+  corBaixa          String    @default("#10B981") // green
+  corNormal         String    @default("#3B82F6") // blue
+  corAlta           String    @default("#F59E0B") // amber
+  corUrgente        String    @default("#EF4444") // red
+
+  // Layout & Tema
+  tema              String    @default("light")   // light | dark | auto
+  tamanhoCard       String    @default("medium")  // small | medium | large
+  mostrarAvatar     Boolean   @default(true)
+  mostrarProcesso   Boolean   @default(true)
+  mostrarDPP        Boolean   @default(true)
+  mostrarAlertas    Boolean   @default(true)
+  mostrarObservacoes Boolean  @default(true)
+
+  // Colunas Visíveis
+  colunaNovoVisivel       Boolean   @default(true)
+  colunaTriagemVisivel    Boolean   @default(true)
+  colunaAndamentoVisivel  Boolean   @default(true)
+  colunaConcluidoVisivel  Boolean   @default(true)
+
+  // Filtros Padrão
+  filtroAreaPadrao  String?   // Área padrão ao abrir
+  filtroNaturezaPadrao String? // LEAD | ORGÂNICO
+  filtroResponsavelPadrao String? // Responsável padrão
+
+  // Limites & Paginação
+  registrosPorPagina Int      @default(50)
+  autoRefreshStats   Int      @default(30)    // segundos
+  mostrarStatsPorColuna Boolean @default(true)
+
+  // Validações & Regras
+  requererMotivoMovimento Boolean @default(false)
+  bloqueioAutomatico      Boolean @default(true)
+  notificacoes            Boolean @default(true)
+
+  // Relações
+  historicos PresetConfigurador[]
+  histAuditar HistoricoConfigurador[]
+
+  @@unique([usuarioId]) // Um config por usuário
+  @@map("configurador_operacional")
 }
 
-model ConcessaoEntry {
-  id              String    @id @default(cuid())
-  data            DateTime?
-  cliente         String
-  beneficio       String?
-  dataRecebimento DateTime?
-  valorHonorarios String?
-  boletos         String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+// ─── PRESET CONFIGURADOR (SAVED TEMPLATES) ─────────────────────────────────
 
-  @@map("concessao_entries")
+model PresetConfigurador {
+  id                String    @id @default(cuid())
+  nome              String    // "Tema Escuro", "Tema Colorido", etc
+  descricao         String?
+  isPublico         Boolean   @default(true) // Compartilhado com todos
+  criadoPor         String    // email/id do usuário
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Configuração (JSON serializado)
+  configuracao      Json      // ConfiguradorOperacional sem id/usuarioId
+
+  // Relação
+  configuradorId    String?
+  configurador      ConfiguradorOperacional? @relation(fields: [configuradorId], references: [id], onDelete: SetNull)
+
+  // Auditoria
+  usosCount         Int       @default(0) // Quantas vezes foi aplicado
+  ultimoUsoEm       DateTime?
+
+  @@map("preset_configurador")
 }
 
-model AcessoEntry {
-  id        String   @id @default(cuid())
-  sistema   String
-  login     String?
-  senha     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── HISTÓRICO CONFIGURADOR (AUDIT LOG) ────────────────────────────────────
 
-  @@map("acesso_entries")
+model HistoricoConfigurador {
+  id                String    @id @default(cuid())
+  configuradorId    String
+  configurador      ConfiguradorOperacional @relation(fields: [configuradorId], references: [id], onDelete: Cascade)
+
+  usuarioId         String    // Quem fez a mudança
+  acao              String    // "alterou_cores", "renomeou_coluna", "aplicou_preset", "exportou", etc
+
+  // O que mudou
+  campoAlterado     String?   // Nome do campo (ex: "corPrevidenciario")
+  valorAnterior     String?   // Valor antes
+  valorNovo         String?   // Valor depois
+
+  // Contexto
+  descricao         String?   // Descrição legível da mudança
+  ipAddress         String?
+  userAgent         String?
+
+  createdAt         DateTime  @default(now())
+
+  @@map("historico_configurador")
 }
 
-model InicialEntry {
-  id               String    @id @default(cuid())
-  cliente          String
-  processo         String?
-  areaAtuacao      String?
-  tipoRequerimento String?
-  dataInicial      DateTime?
-  protocolo        String?
-  responsavel      String?
-  status           String?
-  observacoes      String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+// ─── TECLA PERSONALIZADA (KEYBOARD SHORTCUTS) ──────────────────────────────
 
-  @@map("inicial_entries")
+model TeclaPersonalizada {
+  id                String    @id @default(cuid())
+  usuarioId         String    // Por usuário
+
+  acao              String    // "salvar_config", "exportar", "importar", "abrir_filtros", etc
+  teclaCombo        String    // "Ctrl+S", "Cmd+E", "Alt+Shift+X", etc
+  descricao         String?   // Descrição legível
+  ativo             Boolean   @default(true)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([usuarioId, acao])
+  @@map("tecla_personalizada")
 }
 
-model OperacionalEntry {
-  id               String    @id @default(cuid())
-  dataEntrada      DateTime
-  cliente          String
-  contato          String?
-  natureza         String    @default("LEAD")
-  areaAtuacao      String?
-  beneficioDemanda String?
-  obsStatus        String?   // "Obs / Status" — status curto (EM ANDAMENTO, BENEFÍCIO CONCEDIDO, etc.)
-  conformidade     String?
-  setor            String?
-  cadSenha         String?
-  statusAtual      String?   // "Situação Atual" — descrição longa
-  honorarios       Decimal?  @db.Decimal(10, 2)  // HONORÁRIOS
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  @@map("operacional_entries")
-}
+// ─── END CONFIGURADOR MODELS ───────────────────────────────────────────────
 
 // ─── FICHA OPERACIONAL (NEW KANBAN MODEL) ─────────────────────────────────
 
@@ -685,6 +722,163 @@ model FichaOperacional {
   historicoLog      String?             @db.Text  // append-only, ISO date + user + action
 
   @@map("fichas_operacionais")
+}
+
+// ─── IMPORTAÇÃO POR ABAS DA PLANILHA ──────────────────────────────────────
+
+model FechamentosEntry {
+  id           String   @id @default(cuid())
+  data         DateTime?
+  cliente      String   // required
+  contato      String?
+  natureza     String?
+  area         String?
+  beneficio    String?
+  observacao   String?  @db.Text
+  setor        String?
+  cadSenha     String?
+  statusAtual  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("fechamentos_entries")
+  @@index([cliente])
+  @@index([area])
+}
+
+model IniciaisEntry {
+  id                String   @id @default(cuid())
+  cliente           String   // required
+  processo          String?
+  area              String?
+  tipoRequerimento  String?
+  dataInicial       DateTime?
+  protocolo         String?
+  responsavel       String?
+  status            String?
+  observacoes       String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("iniciais_entries")
+  @@index([cliente])
+  @@index([area])
+}
+
+model PrazosEntry {
+  id                String   @id @default(cuid())
+  cliente           String   // required
+  processo          String?
+  area              String?
+  tipoPrazo         String?
+  dataInicial       DateTime?
+  dataFinal         DateTime?
+  responsavel       String?
+  status            String?
+  observacoes       String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("prazos_entries")
+  @@index([cliente])
+  @@index([dataFinal])
+}
+
+model SalMaternidadeEntry {
+  id           String   @id @default(cuid())
+  cliente      String   // required
+  contato      String?
+  beneficio    String?
+  contribuicao String?
+  dppOuDn      DateTime?
+  pagamento    String?
+  planejamento String?
+  status       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("sal_maternidade_entries")
+  @@index([cliente])
+  @@index([dppOuDn])
+}
+
+model CadSenhaEntry {
+  id                String   @id @default(cuid())
+  entrada           DateTime?
+  cliente           String   // required
+  contato           String?
+  natureza          String?
+  beneficio         String?
+  procuracao        String?
+  substabelecimento String?
+  rg                String?
+  status            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("cad_senha_entries")
+  @@index([cliente])
+}
+
+model ConcessoesEntry {
+  id                String   @id @default(cuid())
+  data              DateTime // required
+  cliente           String   // required
+  beneficio         String?
+  dataRecebimento   DateTime?
+  valorHonorarios   Decimal? @db.Decimal(10, 2)
+  boletos           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("concessoes_entries")
+  @@index([cliente])
+  @@index([data])
+}
+
+model RelatoriosEntry {
+  id           String   @id @default(cuid())
+  mes          Int?
+  ano          Int?
+  tipo         String?
+  descricao    String?  @db.Text
+  valor        Int?
+  observacoes  String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("relatorios_entries")
+  @@index([ano, mes])
+}
+
+model AcessosEntry {
+  id       String   @id @default(cuid())
+  sistema  String   // required
+  login    String?
+  senha    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("acessos_entries")
+  @@index([sistema])
+}
+
+model Pagina16Entry {
+  id                String   @id @default(cuid())
+  numero            Int?
+  cliente           String   // required
+  demanda           String?
+  area              String?
+  tipoRequerimento  String?
+  data              DateTime?
+  responsavel       String?
+  observacao        String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("pagina16_entries")
+  @@index([cliente])
+  @@index([area])
 }
 
 model AppSetting {
@@ -878,4 +1072,143 @@ model WhatsAppIntegration {
 
   @@index([platform, active])
   @@map("whatsapp_integrations")
+}
+
+// ─── IA ATENDIMENTO MODELS ───────────────────────────────────────────────────
+
+enum IAType {
+  super_agent
+  whatsapp_ia
+  marketing_ia
+}
+
+enum AIChatStatus {
+  active
+  archived
+  escalated
+}
+
+enum AIModel {
+  haiku
+  sonnet
+  opus
+}
+
+model AIConfiguration {
+  id                          String   @id @default(cuid())
+  userId                      String   @unique @map("user_id")
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // API Keys (encriptados)
+  anthropic_api_key_encrypted String?  @map("anthropic_api_key_encrypted")
+  serper_api_key_encrypted    String?  @map("serper_api_key_encrypted")
+  lastKeyUpdate               DateTime? @map("last_key_update")
+
+  // Modelo padrão
+  defaultModel                AIModel  @default(sonnet) @map("default_model")
+  maxTokens                   Int      @default(4096) @map("max_tokens")
+  temperature                 Decimal  @default(0.7) @db.Decimal(2, 1)
+
+  // Super Agent Jurídico
+  superAgentEnabled           Boolean  @default(true) @map("super_agent_enabled")
+  superAgentAutoSearch        Boolean  @default(true) @map("super_agent_auto_search")
+  superAgentAutoAlerts        Boolean  @default(true) @map("super_agent_auto_alerts")
+
+  // WhatsApp IA
+  whatsappIaEnabled           Boolean  @default(true) @map("whatsapp_ia_enabled")
+  whatsappIaAutoRespond       Boolean  @default(true) @map("whatsapp_ia_auto_respond")
+  whatsappIaApprovalRequired  Boolean  @default(false) @map("whatsapp_ia_approval_required")
+  whatsappIaEscalateDelaySeconds Int   @default(30) @map("whatsapp_ia_escalate_delay_seconds")
+
+  // Marketing IA
+  marketingIaEnabled          Boolean  @default(true) @map("marketing_ia_enabled")
+  marketingIaAnalysisModels   String[] @default(["roi", "funnel", "cac", "roas"]) @map("marketing_ia_analysis_models")
+
+  // Privacidade
+  logConversations            Boolean  @default(true) @map("log_conversations")
+  anonymizeSensitiveData      Boolean  @default(true) @map("anonymize_sensitive_data")
+  encryptAtRest               Boolean  @default(true) @map("encrypt_at_rest")
+  dataRetentionDays           Int      @default(90) @map("data_retention_days")
+
+  // Monitoramento
+  maxCallsPerHour             Int      @default(100) @map("max_calls_per_hour")
+  maxTokensPerDay             Int      @default(1000000) @map("max_tokens_per_day")
+  rateLimitAlert              Boolean  @default(true) @map("rate_limit_alert")
+  errorAlertSlack             Boolean  @default(false) @map("error_alert_slack")
+  autoRetryEnabled            Boolean  @default(true) @map("auto_retry_enabled")
+  autoRetryMaxAttempts        Int      @default(3) @map("auto_retry_max_attempts")
+
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_configuration")
+}
+
+model AIChat {
+  id                String       @id @default(cuid())
+  userId            String       @map("user_id")
+  iaType            IAType       @map("ia_type")
+
+  // Conversação
+  messages          Json         @default("[]")
+  sessionId         String?      @unique @map("session_id")
+
+  // Metadados
+  totalTokens       Int          @default(0) @map("total_tokens")
+  totalCost         Decimal      @default(0) @db.Decimal(10, 4) @map("total_cost")
+  status            AIChatStatus @default(active)
+
+  // Timestamps
+  startedAt         DateTime     @default(now()) @map("started_at")
+  endedAt           DateTime?    @map("ended_at")
+  lastMessageAt     DateTime     @default(now()) @map("last_message_at")
+
+  // Cliente associado (opcional)
+  clientId          String?      @map("client_id")
+  client            Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Tags e categorização
+  tags              String[]     @default([])
+  notes             String?
+
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([iaType])
+  @@index([clientId])
+  @@index([createdAt(sort: Desc)])
+  @@map("ai_chat")
+}
+
+model AIAnalytics {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+
+  // Data (agregada por dia)
+  date              DateTime @map("date")
+  iaType            IAType   @map("ia_type")
+
+  // Métricas
+  totalConversations Int     @default(0) @map("total_conversations")
+  totalMessages     Int      @default(0) @map("total_messages")
+  totalTokensUsed   Int      @default(0) @map("total_tokens_used")
+  totalCost         Decimal  @default(0) @db.Decimal(10, 4) @map("total_cost")
+
+  avgResponseTimeMs Int      @default(0) @map("avg_response_time_ms")
+  avgSatisfactionScore Decimal @default(0) @db.Decimal(3, 1) @map("avg_satisfaction_score")
+
+  errorsCount       Int      @default(0) @map("errors_count")
+  retriesCount      Int      @default(0) @map("retries_count")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, iaType])
+  @@index([date(sort: Desc)])
+  @@map("ai_analytics")
 }
