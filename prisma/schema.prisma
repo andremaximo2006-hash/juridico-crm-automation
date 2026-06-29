@@ -533,6 +533,9 @@ model User {
   aiChats                     AIChat[]
   aiAnalytics                 AIAnalytics[]
 
+  // IA Factory Relations
+  ias                         IAInstance[] @relation("UserIAs")
+
   @@map("users")
 }
 
@@ -1308,4 +1311,179 @@ model AIAnalytics {
   @@unique([userId, date, iaType])
   @@index([date(sort: Desc)])
   @@map("ai_analytics")
+}
+
+// ─── IA FACTORY MODELS ───────────────────────────────────────────────────
+
+enum IACanal {
+  whatsapp
+  email
+  webchat
+  telefone
+  instagram
+  linkedin
+  custom
+}
+
+enum IATemplateTipo {
+  sdr_qualificacao
+  suporte_tecnico
+  email_responder
+  chatbot_visitante
+  consultor_legal
+  prospeccao
+  custom
+}
+
+// Template de IA (reutilizável)
+model IATemplateModel {
+  id                String        @id @default(cuid())
+  nome              String        // "SDR Qualificação"
+  descricao         String?
+  templateTipo      IATemplateTipo @default(custom) @map("template_tipo")
+  isPublico         Boolean       @default(false) @map("is_publico")
+
+  // Config padrão
+  systemPrompt      String        @db.Text
+  modelo            AIModel       @default(sonnet)
+  temperature       Decimal       @default(0.7) @db.Decimal(2, 1)
+  maxTokens         Int           @default(4096) @map("max_tokens")
+
+  // Comportamento
+  comportamento     Json          @default("{}") // timeout, retries, logging
+  toolsDisponiveis  String[]      @default([]) @map("tools_disponiveis")
+  validacoes        Json?
+
+  // Metadata
+  versao            Int           @default(1)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  // Relações
+  ias               IAInstance[]
+
+  @@index([templateTipo])
+  @@map("ia_templates")
+}
+
+// Instância de IA (criada pelo usuário)
+model IAInstance {
+  id              String        @id @default(cuid())
+  userId          String        @map("user_id")
+  user            User          @relation("UserIAs", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Info básica
+  nome            String
+  descricao       String?
+  icone           String?       // emoji ou URL
+
+  // Template
+  templateId      String?       @map("template_id")
+  template        IATemplateModel? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  // Config
+  canal           IACanal
+  modelo          AIModel       @default(sonnet)
+  temperature     Decimal       @default(0.7) @db.Decimal(2, 1)
+  maxTokens       Int           @default(4096) @map("max_tokens")
+
+  // Prompt customizável
+  systemPrompt    String        @db.Text @map("system_prompt")
+
+  // Comportamento
+  comportamento   Json          @default("{}") @map("comportamento")
+  toolsAtivas     String[]      @default([]) @map("tools_ativas")
+
+  // Status
+  isAtiva         Boolean       @default(true) @map("is_ativa")
+  isPublicada     Boolean       @default(false) @map("is_publicada")
+
+  // Credenciais por canal
+  canalConfig     Json          @default("{}") @map("canal_config")
+
+  // Metadata
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  lastUsedAt      DateTime?     @map("last_used_at")
+
+  // Stats
+  totalConversas  Int           @default(0) @map("total_conversas")
+  totalTokensUsado Int          @default(0) @map("total_tokens_usado")
+  totalCusto      Decimal       @default(0) @db.Decimal(10, 4) @map("total_custo")
+
+  // Relações
+  conversas       IAConversa[]
+  logs            IALog[]
+
+  @@index([userId])
+  @@index([canal])
+  @@index([isAtiva])
+  @@map("ia_instances")
+}
+
+// Conversa com IA (genérica)
+model IAConversa {
+  id              String        @id @default(cuid())
+  iaId            String        @map("ia_id")
+  ia              IAInstance    @relation(fields: [iaId], references: [id], onDelete: Cascade)
+
+  // Participante
+  participante    String        // nome do cliente
+  participanteId  String?       @map("participante_id") // leadId/clientId
+  contactoInfo    Json          @default("{}") @map("contacto_info")
+
+  // Conversa
+  mensagens       Json          @default("[]") // [{ role, content, timestamp, tokens }]
+  dados           Json          @default("{}") // dados coletados
+
+  // Status
+  status          String        @default("ativa") // ativa, concluida, escalonada
+  escalonadoEm    DateTime?     @map("escalado_em")
+
+  // Metadata
+  canal           IACanal
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([iaId])
+  @@index([status])
+  @@map("ia_conversas")
+}
+
+// Log de IA
+model IALog {
+  id              String        @id @default(cuid())
+  iaId            String        @map("ia_id")
+  ia              IAInstance    @relation(fields: [iaId], references: [id], onDelete: Cascade)
+
+  // Log
+  nivel           String        // info, warning, error
+  mensagem        String
+  dados           Json?
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([iaId])
+  @@index([nivel])
+  @@map("ia_logs")
+}
+
+// Analytics diário de IA
+model IAAnaliticsDia {
+  id              String        @id @default(cuid())
+  iaId            String        @map("ia_id")
+
+  // Data
+  data            DateTime
+
+  // Métricas
+  conversas       Int           @default(0)
+  mensagens       Int           @default(0)
+  tokens          Int           @default(0)
+  custo           Decimal       @default(0) @db.Decimal(10, 4)
+  avgResponseTime Int           @default(0) @map("avg_response_time")
+  erros           Int           @default(0)
+
+  @@unique([iaId, data])
+  @@map("ia_analytics_dia")
 }
