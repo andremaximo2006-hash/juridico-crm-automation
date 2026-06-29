@@ -1021,10 +1021,15 @@ model WhatsAppConversation {
 
   // Relações
   humanTickets              WhatsAppHumanTicket[]
+  qualificacao              WhatsAppQualificacao?
+  tarefas                   WhatsAppTarefa[]
+  roteiro                   WhatsAppRoteiro?     @relation("ConversationRoteiro", fields: [roteiroId], references: [id], onDelete: SetNull)
+  roteiroId                 String?              @map("roteiro_id")
 
   @@index([leadId])
   @@index([status])
   @@index([transferredToAttendantId])
+  @@index([roteiroId])
   @@map("whatsapp_conversations")
 }
 
@@ -1050,6 +1055,98 @@ model WhatsAppHumanTicket {
   @@index([assignedToAttendantId])
   @@index([priority])
   @@map("whatsapp_human_tickets")
+}
+
+// ─── WHATSAPP IA SDR MODELS ───────────────────────────────────────────────
+
+// Roteiro de atendimento (configurável)
+model WhatsAppRoteiro {
+  id            String   @id @default(cuid())
+  name          String   // "Roteiro Previdenciário"
+  description   String?
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  steps         WhatsAppRoteiroStep[] @relation("RoteiroSteps")
+  conversations WhatsAppConversation[] @relation("ConversationRoteiro")
+
+  @@map("whatsapp_roteiros")
+}
+
+// Passo do roteiro (pergunta)
+model WhatsAppRoteiroStep {
+  id            String   @id @default(cuid())
+  roteiroId     String   @map("roteiro_id")
+  roteiro       WhatsAppRoteiro @relation("RoteiroSteps", fields: [roteiroId], references: [id], onDelete: Cascade)
+
+  // Ordem
+  order         Int      // 1, 2, 3...
+
+  // Pergunta
+  pergunta      String   // "Qual é a sua área jurídica?"
+  tipo          String   @default("text") // "text", "multiple_choice", "date", "phone"
+  isRequired    Boolean  @default(true) @map("is_required")
+
+  // Respostas possíveis (para multiple_choice)
+  respostas     Json?    // [{ label: "Família", value: "familia" }]
+
+  // Próximo passo
+  proximoStep   Int?     @map("proximo_step")
+  condicoes     Json?    // Lógica de branching
+
+  // Validação
+  regex         String?  // Para validar formato
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([roteiroId, order])
+  @@map("whatsapp_roteiro_steps")
+}
+
+// Qualificação do lead (scoring)
+model WhatsAppQualificacao {
+  id            String   @id @default(cuid())
+  conversationId String   @unique @map("conversation_id")
+  conversation  WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Dados coletados
+  dados         Json     @default("{}") // { "area": "familia", "situacao": "divorcio" }
+
+  // Scoring
+  score         Int      @default(0)    // 0-100
+  viabilidade   String   @default("pendente") // "viavel", "inviavel"
+  motivo        String?  // Por que é inviável?
+
+  // Encaminhamento
+  encaminhadoEm DateTime? @map("encaminhado_em")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapp_qualificacoes")
+}
+
+// Tarefa automática do SDR
+model WhatsAppTarefa {
+  id            String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  conversation  WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Tipo de tarefa
+  tipo          String   // "enviar_documento", "agendar_reuniao"
+  descricao     String
+
+  // Status
+  status        String   @default("pendente") // "pendente", "completo", "erro"
+  resultado     Json?
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  completadoEm  DateTime? @map("completado_em")
+
+  @@map("whatsapp_tarefas")
 }
 
 // Configurações de integrações WhatsApp
