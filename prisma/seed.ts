@@ -1,91 +1,97 @@
-// import { PrismaClient } from "@prisma/client";
-// const prisma = new PrismaClient();
+import { PrismaClient } from "@prisma/client";
 
-// Disabled during build - use custom prisma instance instead
-const prisma = null as any;
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log("[Seed] Iniciando população de dados...\n");
+  console.log("🌱 Seed: Criando roteiros de template...");
 
-  // Roteiros iniciais (system prompts por área jurídica)
-  const routines = [
-    {
-      legal_area: "previdenciario",
-      name: "Roteiro - Direito Previdenciário",
-      system_prompt: `Você é um assistente jurídico especializado em Direito Previdenciário.
+  // Roteiro 1: Previdenciário
+  const rot1 = await prisma.whatsAppRoteiro.create({
+    data: {
+      name: "Previdenciário",
+      description: "Qualifica leads na área de previdência",
+      is_active: true,
+      steps: {
+        create: [
+          {
+            order: 1,
+            pergunta: "Qual é o seu nome completo?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 2
+          },
+          {
+            order: 2,
+            pergunta: "Qual sua situação? (aposentadoria/pensão/BPC/outro)",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 3
+          },
+          {
+            order: 3,
+            pergunta: "Há quanto tempo está nessa situação?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 4
+          },
+          {
+            order: 4,
+            pergunta: "Qual seu CPF? (formato: 000.000.000-00)",
+            tipo: "text",
+            is_required: true
+          }
+        ]
+      }
+    }
+  });
 
-Seu objetivo:
-1. Entender a situação do cliente (idade, tempo de contribuição, último emprego)
-2. Identificar se é caso de: BPC/LOAS, Aposentadoria, Auxílio Doença, etc
-3. Oferecer orientação inicial sobre documentos necessários
-4. Se qualificado, SEMPRE use a tool 'transfer_to_human' com motivo claro
-5. Se fora do escopo, use 'transfer_to_human' com prioridade 'low'
+  // Roteiro 2: Família
+  const rot2 = await prisma.whatsAppRoteiro.create({
+    data: {
+      name: "Família",
+      description: "Qualifica leads na área de direito de família",
+      is_active: true,
+      steps: {
+        create: [
+          {
+            order: 1,
+            pergunta: "Qual é o seu nome?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 2
+          },
+          {
+            order: 2,
+            pergunta: "Qual sua situação? (divórcio/guarda/pensão/herança/outro)",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 3
+          },
+          {
+            order: 3,
+            pergunta: "Tem filhos menores envolvidos?",
+            tipo: "text",
+            is_required: true,
+            proximo_step: 4
+          },
+          {
+            order: 4,
+            pergunta: "Qual seu CPF?",
+            tipo: "text",
+            is_required: true
+          }
+        ]
+      }
+    }
+  });
 
-Seja amigável, profissional e conciso. Máximo 3 parágrafos por resposta.`,
-      tools: [
-        "search_jurisprudence",
-        "check_requirements",
-        "transfer_to_human",
-        "save_to_memory",
-      ],
-      active: true,
-      version: 1,
-    },
-    {
-      legal_area: "familia",
-      name: "Roteiro - Direito da Família",
-      system_prompt: `Você é um assistente jurídico especializado em Direito da Família.
-
-Seu objetivo:
-1. Entender a situação familiar (divórcio, guarda, alimentos, união estável)
-2. Oferecer orientação sobre direitos e procedimentos
-3. Qualificar o tipo de caso (consensual, litigioso, urgente)
-4. Se o cliente precisar de documento específico ou tiver caso urgente, use 'transfer_to_human'
-5. Mantenha sigilo e sensibilidade com situações delicadas
-
-Seja empático, profissional e discreto. Máximo 3 parágrafos por resposta.`,
-      tools: [
-        "search_jurisprudence",
-        "check_requirements",
-        "transfer_to_human",
-        "save_to_memory",
-      ],
-      active: true,
-      version: 1,
-    },
-    {
-      legal_area: "trabalhista",
-      name: "Roteiro - Direito Trabalhista",
-      system_prompt: `Você é um assistente jurídico especializado em Direito Trabalhista.
-
-Seu objetivo:
-1. Entender a situação do cliente (demissão, rescisão, direitos trabalhistas)
-2. Identificar se há violação de direitos (FGTS, 13º, férias, etc)
-3. Oferecer orientação sobre procedimentos (acordo, reclamação trabalhista)
-4. Se o cliente tiver direitos a reclamar, use 'transfer_to_human' com prioridade 'high'
-5. Se for caso simples de orientação, continue na IA
-
-Seja direto, profissional e prático. Máximo 3 parágrafos por resposta.`,
-      tools: [
-        "search_jurisprudence",
-        "check_requirements",
-        "transfer_to_human",
-        "save_to_memory",
-      ],
-      active: true,
-      version: 1,
-    },
-  ];
-
-  console.log("[Seed] Roteiros definidos. Aguardando DATABASE_URL válida...");
-  console.log("[Seed] Seed.ts está pronto para executar!\n");
+  console.log(`✅ Roteiro 1: ${rot1.name} (ID: ${rot1.id})`);
+  console.log(`✅ Roteiro 2: ${rot2.name} (ID: ${rot2.id})`);
 }
 
 main()
-  .catch((e) => {
-    console.error("[Seed] ✗ Erro:", e);
+  .catch(e => {
+    console.error("❌ Erro no seed:", e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => prisma.$disconnect());
