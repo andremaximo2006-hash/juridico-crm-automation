@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   const mes = searchParams.get("mes");
 
   const where: Record<string, unknown> = {};
-  if (area) where.area = { contains: area, mode: "insensitive" };
   if (responsavel) where.responsavel = { contains: responsavel, mode: "insensitive" };
   if (status) where.status = { contains: status, mode: "insensitive" };
   if (mes) {
@@ -39,7 +38,6 @@ export async function POST(req: NextRequest) {
     data: {
       cliente: body.cliente.trim(),
       processo: body.processo?.trim() || null,
-      area: body.area?.trim() || null,
       dataInicial: body.dataInicial ? new Date(body.dataInicial) : null,
       protocolo: body.protocolo?.trim() || null,
       responsavel: body.responsavel?.trim() || null,

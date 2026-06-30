@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description,
-        is_active: true,
+        isActive: true,
         steps: {
           create: steps.map((s: any, i: number) => ({
             order: i + 1,
             pergunta: s.pergunta,
             tipo: s.tipo || "text",
-            is_required: true,
-            proximo_step: i < steps.length - 1 ? i + 2 : null
+            isRequired: true,
+            proximoStep: i < steps.length - 1 ? i + 2 : null
           }))
         }
       },

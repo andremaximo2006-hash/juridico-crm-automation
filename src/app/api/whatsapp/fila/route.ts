@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
       id: q.id,
       conversationId: q.conversationId,
       participante: q.conversation?.conversationHistory?.[0]?.content || "Desconhecido",
-      area: q.dados.area,
       score: q.score,
       viabilidade: q.viabilidade,
       roteiro: q.conversation?.roteiro?.name,

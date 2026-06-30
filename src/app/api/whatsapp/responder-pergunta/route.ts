@@ -25,11 +25,12 @@ export async function POST(request: NextRequest) {
 
     const roteiro = conversa.roteiro!;
     const steps = roteiro.steps.sort((a, b) => a.order - b.order);
-    const currentStep = qualificacao.dados.currentStep || 1;
+    const dadosAny = qualificacao.dados as any;
+    const currentStep = dadosAny.currentStep || 1;
     const proximoStep = currentStep + 1;
 
     const novosDados = {
-      ...qualificacao.dados,
+      ...dadosAny,
       [`step_${currentStep}`]: resposta,
       currentStep: proximoStep
     };

@@ -696,7 +696,7 @@ model FichaOperacional {
   natureza          NaturezaFicha       // LEAD | ORGANICO
 
   // Processo
-  area              AreaAtuacao         // required
+  area              AreaAtuacao?        // optional
   beneficio         String              // required — lookup from BENEFICIOS[area]
   tipoRequerimento  TipoRequerimento?
   numeroProcesso    String?             // e.g., "5003633-17.2025.4.03.6311"

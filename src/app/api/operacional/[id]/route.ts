@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import type { FichaCard, AreaAtuacao } from "@/types/operacional";
-import { BENEFICIOS, diasAte_DPP, gerarAlertas } from "@/types/operacional";
+import type { FichaCard } from "@/types/operacional";
+import { diasAte_DPP, gerarAlertas } from "@/types/operacional";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,19 +39,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // Validate required fields
   if (!body.nome?.trim()) {
   }
-  if (!body.area) {
-  }
   if (!body.beneficio) {
   }
   if (!body.responsavel) {
-  }
-
-  // Validate beneficio belongs to area
-  const area = body.area as AreaAtuacao | undefined;
-  if (!area || !BENEFICIOS[area]?.includes(body.beneficio)) {
-    return NextResponse.json(
-      { error: `Benefício "${body.beneficio}" não pertence à área "${body.area}"` },
-    );
   }
 
   // Validate SM fields if benefício is Salário Maternidade
@@ -87,7 +77,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       nome: body.nome.trim(),
       contato: body.contato?.trim() || null,
       natureza: body.natureza || current.natureza,
-      area: body.area,
       beneficio: body.beneficio,
       numeroProcesso: body.numeroProcesso?.trim() || null,
       dataEntrada: body.dataEntrada ? new Date(body.dataEntrada) : current.dataEntrada,

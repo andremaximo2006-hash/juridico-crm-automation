@@ -23,7 +23,6 @@ export async function POST(request: NextRequest) {
       data: {
         leadId: "temp_lead_" + Date.now(),
         roteiroId: roteiroId,
-        canal: "custom",
         conversationHistory: [{ role: "assistant", content: primeiroStep.pergunta }]
       }
     });

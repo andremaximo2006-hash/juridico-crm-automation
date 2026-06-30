@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import type { FichaCard, FilterState, AreaAtuacao } from "@/types/operacional";
-import { BENEFICIOS, diasAte_DPP, gerarAlertas, podeAvançarColuna, isBloqueadoMoverAndamento } from "@/types/operacional";
+import type { FichaCard, FilterState } from "@/types/operacional";
+import { diasAte_DPP, gerarAlertas, podeAvançarColuna, isBloqueadoMoverAndamento } from "@/types/operacional";
 
 // Helper function to attach computed fields to ficha
 function enrichFicha(ficha: any): FichaCard {
@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
   // Build where clause
   const where: Record<string, unknown> = {};
 
-  if (area) where.area = area;
   if (natureza) where.natureza = natureza;
   if (prioridade) where.prioridade = prioridade;
   if (responsavel) where.responsavel = responsavel;
@@ -88,7 +87,6 @@ export async function GET(req: NextRequest) {
       nome: c.cliente,
       contato: c.contato,
       natureza: "LEAD",
-      area: "Previdenciario",
       beneficio: "CadSenha",
       numeroProcesso: null,
       dataEntrada: c.createdAt,
@@ -107,7 +105,6 @@ export async function GET(req: NextRequest) {
       nome: i.cliente,
       contato: null,
       natureza: "ORGANICO",
-      area: i.area || "Previdenciario",
       numeroProcesso: i.processo,
       dataEntrada: i.dataInicial,
       dataProtocolo: null,
@@ -125,7 +122,6 @@ export async function GET(req: NextRequest) {
       nome: p.cliente,
       contato: null,
       natureza: "LEAD",
-      area: p.area || "Previdenciario",
       beneficio: p.demanda || "Demanda",
       numeroProcesso: null,
       dataEntrada: p.data,
@@ -144,7 +140,6 @@ export async function GET(req: NextRequest) {
       nome: s.cliente,
       contato: s.contato,
       natureza: "ORGANICO",
-      area: "Previdenciario",
       beneficio: s.beneficio || "Salário Maternidade",
       numeroProcesso: null,
       dataEntrada: s.createdAt,
@@ -192,19 +187,9 @@ export async function POST(req: NextRequest) {
   // Validate required fields
   if (!body.nome?.trim()) {
   }
-  if (!body.area) {
-  }
   if (!body.beneficio) {
   }
   if (!body.responsavel) {
-  }
-
-  // Validate beneficio belongs to area
-  const area = body.area as AreaAtuacao | undefined;
-  if (!area || !BENEFICIOS[area]?.includes(body.beneficio)) {
-    return NextResponse.json(
-      { error: `Benefício "${body.beneficio}" não pertence à área "${body.area}"` },
-    );
   }
 
   // Validate SM fields if benefício is Salário Maternidade
@@ -227,7 +212,6 @@ export async function POST(req: NextRequest) {
       nome: body.nome.trim(),
       contato: body.contato?.trim() || null,
       natureza: body.natureza || "LEAD",
-      area: body.area,
       beneficio: body.beneficio,
       numeroProcesso: body.numeroProcesso?.trim() || null,
       dataEntrada: new Date(body.dataEntrada || new Date()),
