@@ -1447,6 +1447,7 @@ model IAConversa {
 
   @@index([iaId])
   @@index([status])
+  @@unique([iaId, participanteId])
   @@map("ia_conversas")
 }
 

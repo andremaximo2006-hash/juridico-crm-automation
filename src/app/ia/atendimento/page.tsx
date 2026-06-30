@@ -17,12 +17,19 @@ export default function AtendimentoPage() {
         <h1 className="text-4xl font-bold text-gray-800 mb-2">🤖 Sistema Multi-Agente de Atendimento</h1>
         <p className="text-gray-600 mb-8">Recepção automática + Qualificação inteligente de leads</p>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-4 gap-6 mb-12">
           {/* Recepção */}
           <Link href="/ia/atendimento/recepcao" className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-blue-500 hover:shadow-xl transition cursor-pointer">
             <div className="text-4xl mb-3">💬</div>
             <h3 className="font-bold text-lg mb-2">Recepção IA</h3>
             <p className="text-gray-600 text-sm">Atendimento com Marta, coleta dados iniciais</p>
+          </Link>
+
+          {/* Histórico de Conversas */}
+          <Link href="/ia/atendimento/conversas" className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-indigo-500 hover:shadow-xl transition cursor-pointer">
+            <div className="text-4xl mb-3">📚</div>
+            <h3 className="font-bold text-lg mb-2">Histórico</h3>
+            <p className="text-gray-600 text-sm">Visualizar conversas anteriores</p>
           </Link>
 
           {/* Especialistas */}

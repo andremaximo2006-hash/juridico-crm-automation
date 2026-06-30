@@ -15,6 +15,8 @@ interface MessageHistory {
   content: string;
 }
 
+const IA_ID = 'marta-recepcao'; // ID único para Marta
+
 export default function RecepcaoIA() {
   const [mensagens, setMensagens] = useState<Mensagem[]>([
     {
@@ -32,6 +34,8 @@ Qual é o seu primeiro nome?`,
   const [loading, setLoading] = useState(false);
   const [score, setScore] = useState(0);
   const [erro, setErro] = useState('');
+  const [participanteId] = useState(`temp-${Date.now()}`); // ID temporário do participante
+  const [dados, setDados] = useState<Record<string, any>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -41,6 +45,42 @@ Qual é o seu primeiro nome?`,
   useEffect(() => {
     scrollToBottom();
   }, [mensagens]);
+
+  const salvarConversa = async (nomeParticipante?: string) => {
+    try {
+      const historicoFormatado = mensagens
+        .filter(m => m.id !== '1')
+        .map(m => ({
+          role: m.remetente === 'lead' ? 'user' : 'assistant',
+          content: m.conteudo,
+          timestamp: m.timestamp.toISOString()
+        }));
+
+      const dadosConversa = {
+        ...dados,
+        ...(nomeParticipante && { nome: nomeParticipante })
+      };
+
+      const response = await fetch('/api/ia/conversa/salvar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          iaId: IA_ID,
+          participante: nomeParticipante || 'Visitante',
+          participanteId,
+          canal: 'web',
+          mensagens: historicoFormatado,
+          dados: dadosConversa
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Erro ao salvar conversa');
+      }
+    } catch (err) {
+      console.error('Erro ao salvar conversa:', err);
+    }
+  };
 
   const enviarMensagem = async () => {
     if (!inputValue.trim() || loading) return;
@@ -93,6 +133,12 @@ Qual é o seu primeiro nome?`,
       const novoScore = Math.min(100, score + Math.random() * 20);
       setScore(novoScore);
 
+      // Extrair nome da primeira resposta se pergunta contém "nome"
+      if (inputValue.toLowerCase().includes('nome') && !dados.nome) {
+        const nome = inputValue.replace(/^sim\s+/i, '').trim();
+        setDados(prev => ({ ...prev, nome }));
+      }
+
       // Adicionar resposta de Marta
       const novaMensagemMarta: Mensagem = {
         id: (Date.now() + 1).toString(),
@@ -102,6 +148,11 @@ Qual é o seu primeiro nome?`,
       };
 
       setMensagens(prev => [...prev, novaMensagemMarta]);
+
+      // Salvar conversa periodicamente
+      setTimeout(() => {
+        salvarConversa(dados.nome);
+      }, 500);
     } catch (erro) {
       console.error('Erro ao enviar mensagem:', erro);
       setErro(erro instanceof Error ? erro.message : 'Erro ao processar mensagem');
