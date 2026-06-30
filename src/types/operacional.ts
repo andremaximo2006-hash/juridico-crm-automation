@@ -294,12 +294,12 @@ export function podeAvançarColuna(from: KanbanColuna, to: KanbanColuna, ficha: 
     const obsIndicatesCompletion = ficha.observacoes?.toLowerCase().includes("concedido") ||
       ficha.observacoes?.toLowerCase().includes("arquivado") ||
       ficha.observacoes?.toLowerCase().includes("encerrado");
-    if (hasProcessData || obsIndicatesCompletion) {
+    if (obsIndicatesCompletion) {
       return { allowed: true };
     }
     return {
       allowed: false,
-      reason: "Tipo de requerimento e data de protocolo devem estar preenchidos, ou observações devem indicar conclusão",
+      reason: "Observações devem indicar conclusão (concedido, arquivado, encerrado)",
     };
   }
 
