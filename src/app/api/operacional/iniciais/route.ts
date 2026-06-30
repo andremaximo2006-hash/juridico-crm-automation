@@ -4,7 +4,6 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { searchParams } = req.nextUrl;
   const area = searchParams.get("area");
@@ -31,11 +30,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const body = await req.json();
   if (!body.cliente?.trim()) {
-    return NextResponse.json({ error: "Cliente obrigatório" }, { status: 400 });
   }
 
   const entry = await prisma.iniciaisEntry.create({
@@ -43,14 +40,11 @@ export async function POST(req: NextRequest) {
       cliente: body.cliente.trim(),
       processo: body.processo?.trim() || null,
       area: body.area?.trim() || null,
-      tipoRequerimento: body.tipoRequerimento?.trim() || null,
       dataInicial: body.dataInicial ? new Date(body.dataInicial) : null,
       protocolo: body.protocolo?.trim() || null,
       responsavel: body.responsavel?.trim() || null,
-      status: body.status?.trim() || null,
       observacoes: body.observacoes?.trim() || null,
     },
   });
 
-  return NextResponse.json(entry, { status: 201 });
 }

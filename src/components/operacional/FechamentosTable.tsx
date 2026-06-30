@@ -160,13 +160,10 @@ export default function FechamentosTable({
                     )}
                   </div>
                   <div className="min-w-0 space-y-0.5">
-                    {e.areaAtuacao && (
-                      <p className="text-xs font-semibold text-gray-700 truncate">{e.areaAtuacao}</p>
                     )}
                     {e.beneficioDemanda && (
                       <p className="text-xs text-gray-400 truncate">{e.beneficioDemanda}</p>
                     )}
-                    {!e.areaAtuacao && !e.beneficioDemanda && (
                       <span className="text-xs text-gray-300">—</span>
                     )}
                   </div>
@@ -218,7 +215,6 @@ export default function FechamentosTable({
                       <p className="text-sm font-semibold text-gray-900 truncate">{e.cliente}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {new Date(e.dataEntrada).toLocaleDateString("pt-BR")}
-                        {e.areaAtuacao && ` · ${e.areaAtuacao}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 mt-0.5">

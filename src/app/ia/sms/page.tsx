@@ -7,7 +7,13 @@ export default function SMSIAPage() {
       <h1 className="text-4xl font-bold mb-2">SMS IA</h1>
       <p className="text-gray-600 mb-8">Sistema de SMS automático com IA</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Link href="/ia/sms/configuracao" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg hover:shadow-lg cursor-pointer transition">
+          <div className="text-3xl mb-2">⚙️</div>
+          <h3 className="font-semibold text-lg mb-2">Configuração</h3>
+          <p className="text-purple-100 text-sm">Configure Twilio/AWS SNS</p>
+        </Link>
+
         <Link href="/ia/sms/templates" className="bg-white p-6 rounded-lg border hover:shadow-lg cursor-pointer transition">
           <div className="text-3xl mb-2">📄</div>
           <h3 className="font-semibold text-lg mb-2">Templates</h3>

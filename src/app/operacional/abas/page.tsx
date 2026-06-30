@@ -100,7 +100,6 @@ export default function AbasOperacionalPage() {
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 p-3 text-sm">
                       <span className="inline-block px-2 py-1 rounded text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100">
-                        {item.status || item.tipoRequerimento || "-"}
                       </span>
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 p-3 text-sm text-gray-600 dark:text-gray-400">

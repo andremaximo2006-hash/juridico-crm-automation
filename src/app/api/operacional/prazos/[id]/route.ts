@@ -7,7 +7,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
@@ -23,14 +22,11 @@ export async function PATCH(
     data: {
       cliente:       body.cliente       ?? undefined,
       processo:      body.processo      ?? null,
-      areaAtuacao:   body.areaAtuacao   ?? null,
       tipoPrazo:     body.tipoPrazo     ?? null,
       dataInicial:   parseDate(body.dataInicial),
       dataFinal:     parseDate(body.dataFinal),
       responsavel:   body.responsavel   ?? null,
-      status:        body.status        ?? null,
       observacoes:   body.observacoes   ?? null,
-      modificadoPor: session.name,
     },
   });
 

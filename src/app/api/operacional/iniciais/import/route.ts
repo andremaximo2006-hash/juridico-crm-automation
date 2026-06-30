@@ -39,11 +39,9 @@ function formatDateValue(v: unknown): string | null {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "Arquivo não enviado" }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true, codepage: 65001 });
@@ -77,12 +75,9 @@ export async function POST(req: NextRequest) {
         data: {
           cliente,
           processo: norm(row[4]) || null,
-          areaAtuacao: norm(row[5]) || null,
-          tipoRequerimento: norm(row[6]) || null,
           dataInicial,
           protocolo,
           responsavel: norm(row[9]) || null,
-          status: norm(row[10]) || null,
           observacoes: norm(row[11]) || null,
         },
       });

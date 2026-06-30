@@ -20,13 +20,11 @@ function enrichFicha(ficha: any): FichaCard {
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
   const ficha = await prisma.fichaOperacional.findUnique({ where: { id } });
 
   if (!ficha) {
-    return NextResponse.json({ error: "Ficha não encontrada" }, { status: 404 });
   }
 
   return NextResponse.json(enrichFicha(ficha));
@@ -34,23 +32,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 export async function PUT(req: NextRequest, { params }: Params) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
 
   // Validate required fields
   if (!body.nome?.trim()) {
-    return NextResponse.json({ error: "Nome do cliente obrigatório" }, { status: 400 });
   }
   if (!body.area) {
-    return NextResponse.json({ error: "Área de atuação obrigatória" }, { status: 400 });
   }
   if (!body.beneficio) {
-    return NextResponse.json({ error: "Benefício obrigatório" }, { status: 400 });
   }
   if (!body.responsavel) {
-    return NextResponse.json({ error: "Responsável obrigatório" }, { status: 400 });
   }
 
   // Validate beneficio belongs to area
@@ -58,7 +51,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!area || !BENEFICIOS[area]?.includes(body.beneficio)) {
     return NextResponse.json(
       { error: `Benefício "${body.beneficio}" não pertence à área "${body.area}"` },
-      { status: 400 }
     );
   }
 
@@ -67,13 +59,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (!body.smContribuicao) {
       return NextResponse.json(
         { error: "Contribuição (CI/FBR) obrigatória para Salário Maternidade" },
-        { status: 400 }
       );
     }
     if (!body.smDpp) {
       return NextResponse.json(
         { error: "Data Prevista do Parto obrigatória para Salário Maternidade" },
-        { status: 400 }
       );
     }
   }
@@ -81,7 +71,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // Fetch current ficha for history logging
   const current = await prisma.fichaOperacional.findUnique({ where: { id } });
   if (!current) {
-    return NextResponse.json({ error: "Ficha não encontrada" }, { status: 404 });
   }
 
   // Build changes for history
@@ -100,7 +89,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       natureza: body.natureza || current.natureza,
       area: body.area,
       beneficio: body.beneficio,
-      tipoRequerimento: body.tipoRequerimento || null,
       numeroProcesso: body.numeroProcesso?.trim() || null,
       dataEntrada: body.dataEntrada ? new Date(body.dataEntrada) : current.dataEntrada,
       dataProtocolo: body.dataProtocolo ? new Date(body.dataProtocolo) : null,
@@ -127,7 +115,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
 
@@ -135,5 +122,4 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   // For now, hard delete (can be changed to soft delete by adding deletedAt field)
   await prisma.fichaOperacional.delete({ where: { id } });
 
-  return new NextResponse(null, { status: 204 });
 }

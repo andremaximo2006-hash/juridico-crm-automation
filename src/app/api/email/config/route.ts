@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       provider,
-      apiKey,
       fromEmail,
       fromName,
       smtpHost,
       smtpPort,
       smtpUser,
       smtpPassword,
+      sendgridApiKey,
       webhookUrl
     } = body;
 
@@ -48,20 +48,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Desativar configs anteriores do mesmo provider
+    // Validação por provider
+    if (provider === 'smtp' && (!smtpHost || !smtpUser || !smtpPassword)) {
+      return NextResponse.json({ error: "SMTP credentials required" }, { status: 400 });
+    }
+
+    if (provider === 'sendgrid' && !sendgridApiKey) {
+      return NextResponse.json({ error: "SendGrid API Key required" }, { status: 400 });
+    }
+
+    // Desativar configs anteriores
     await prisma.emailConfig.updateMany({
-      where: { provider },
+      where: { isAtivo: true },
       data: { isAtivo: false }
     });
 
     const config = await prisma.emailConfig.create({
       data: {
         provider,
-        apiKey,
+        apiKey: sendgridApiKey || smtpPassword,
         fromEmail,
         fromName,
         smtpHost,
-        smtpPort,
+        smtpPort: smtpPort ? parseInt(smtpPort) : null,
         smtpUser,
         smtpPassword,
         webhookUrl,
@@ -69,7 +78,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(config, { status: 201 });
+    return NextResponse.json({ message: "Config saved successfully", config }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

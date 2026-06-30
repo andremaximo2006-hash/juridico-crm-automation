@@ -6,7 +6,6 @@ import { diasAte_DPP } from "@/types/operacional";
 
 export async function GET(_req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const fichas = await prisma.fichaOperacional.findMany();
 

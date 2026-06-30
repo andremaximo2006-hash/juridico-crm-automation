@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
         provider: true,
         fromNumber: true,
         isAtivo: true,
-        webhookUrl: true
       }
     });
 
@@ -32,36 +31,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       provider,
-      apiKey,
-      apiSecret,
       accountSid,
-      fromNumber,
-      webhookUrl
+      apiSecret,
+      fromNumber
     } = body;
 
     if (!provider || !fromNumber) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Desativar configs anteriores
+    if (provider === "twilio" && (!accountSid || !apiSecret)) {
+      return NextResponse.json({ error: "Twilio credentials required" }, { status: 400 });
+    }
+
     await prisma.sMSConfig.updateMany({
-      where: { provider },
+      where: { isAtivo: true },
       data: { isAtivo: false }
     });
 
     const config = await prisma.sMSConfig.create({
       data: {
         provider,
-        apiKey,
-        apiSecret,
         accountSid,
+        apiSecret,
         fromNumber,
-        webhookUrl,
         isAtivo: true
       }
     });
 
-    return NextResponse.json(config, { status: 201 });
+    return NextResponse.json({ message: "Config saved successfully", config }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

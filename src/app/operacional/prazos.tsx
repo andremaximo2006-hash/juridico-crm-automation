@@ -67,7 +67,6 @@ function EditModal({
   const [form, setForm] = useState({
     cliente:     entry.cliente,
     processo:    entry.processo     ?? "",
-    areaAtuacao: entry.areaAtuacao  ?? "",
     tipoPrazo:   entry.tipoPrazo    ?? "",
     dataInicial: toInputDate(entry.dataInicial),
     dataFinal:   toInputDate(entry.dataFinal),
@@ -96,7 +95,6 @@ function EditModal({
           dataInicial: form.dataInicial || null,
           dataFinal:   form.dataFinal   || null,
           processo:    form.processo    || null,
-          areaAtuacao: form.areaAtuacao || null,
           tipoPrazo:   form.tipoPrazo   || null,
           responsavel: form.responsavel || null,
           status:      form.status      || null,
@@ -232,7 +230,6 @@ export default function PrazosTab() {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
-  const areas = Array.from(new Set(rows.map((r) => r.areaAtuacao).filter(Boolean))) as string[];
   const statuses = Array.from(new Set(rows.map((r) => r.status).filter(Boolean))) as string[];
 
   return (
@@ -336,7 +333,6 @@ export default function PrazosTab() {
 
                     <p className="text-xs text-gray-500 truncate">{r.processo || "—"}</p>
 
-                    <p className="text-xs text-gray-600 truncate">{r.areaAtuacao || "—"}</p>
 
                     <p className="text-xs text-gray-600 truncate">{r.tipoPrazo || "—"}</p>
 
@@ -352,15 +348,12 @@ export default function PrazosTab() {
 
                     {/* Modificado por */}
                     <div className="min-w-0">
-                      {r.modificadoPor ? (
                         <div className="flex items-center gap-1 min-w-0">
                           <User size={10} className="text-indigo-400 shrink-0" />
-                          <span className="text-xs text-indigo-600 truncate font-medium">{r.modificadoPor}</span>
                         </div>
                       ) : (
                         <span className="text-xs text-gray-300">—</span>
                       )}
-                      {r.modificadoPor && (
                         <p className="text-xs text-gray-400 mt-0.5 truncate">
                           {new Date(r.updatedAt).toLocaleDateString("pt-BR")}
                         </p>
@@ -391,7 +384,6 @@ export default function PrazosTab() {
                         <p className="text-sm font-semibold text-gray-900 truncate">{r.cliente}</p>
                         <p className={`text-xs mt-0.5 ${overdue ? "text-red-500" : "text-gray-400"}`}>
                           {df ? `Prazo: ${df}` : "Sem data"}
-                          {r.areaAtuacao && ` · ${r.areaAtuacao}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 mt-0.5">
@@ -414,10 +406,8 @@ export default function PrazosTab() {
                         {r.processo && <p><span className="text-gray-400 w-24 inline-block">Processo:</span> {r.processo}</p>}
                         {r.tipoPrazo && <p><span className="text-gray-400 w-24 inline-block">Tipo:</span> {r.tipoPrazo}</p>}
                         {r.responsavel && <p><span className="text-gray-400 w-24 inline-block">Responsável:</span> {r.responsavel}</p>}
-                        {r.modificadoPor && (
                           <p>
                             <span className="text-gray-400 w-24 inline-block">Modificado:</span>
-                            <span className="text-indigo-600 font-medium">{r.modificadoPor}</span>
                             {" · "}{new Date(r.updatedAt).toLocaleDateString("pt-BR")}
                           </p>
                         )}

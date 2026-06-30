@@ -9,7 +9,13 @@ export default function EmailIAPage() {
         <p className="text-gray-600">Sistema automático de envio de emails com IA</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Link href="/ia/email/configuracao" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg hover:shadow-lg cursor-pointer transition">
+          <div className="text-3xl mb-2">⚙️</div>
+          <h3 className="font-semibold text-lg mb-2">Configuração</h3>
+          <p className="text-blue-100 text-sm">Configure SMTP/SendGrid</p>
+        </Link>
+
         <Link href="/ia/email/templates" className="bg-white p-6 rounded-lg border hover:shadow-lg cursor-pointer transition">
           <div className="text-3xl mb-2">📝</div>
           <h3 className="font-semibold text-lg mb-2">Templates</h3>

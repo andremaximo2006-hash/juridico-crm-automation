@@ -4,7 +4,6 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.toLowerCase() ?? "";
@@ -12,7 +11,6 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status") ?? "";
 
   const where: Record<string, unknown> = {};
-  if (area) where.areaAtuacao = { contains: area, mode: "insensitive" };
   if (status) where.status = { contains: status, mode: "insensitive" };
 
   const rows = await prisma.prazosEntry.findMany({
@@ -25,7 +23,6 @@ export async function GET(req: NextRequest) {
         (r) =>
           r.cliente.toLowerCase().includes(q) ||
           (r.processo ?? "").toLowerCase().includes(q) ||
-          (r.areaAtuacao ?? "").toLowerCase().includes(q) ||
           (r.tipoPrazo ?? "").toLowerCase().includes(q) ||
           (r.status ?? "").toLowerCase().includes(q)
       )

@@ -18,7 +18,6 @@ function enrichFicha(ficha: any): FichaCard {
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
 
@@ -109,7 +108,6 @@ export async function GET(req: NextRequest) {
       contato: null,
       natureza: "ORGANICO",
       area: i.area || "Previdenciario",
-      beneficio: i.tipoRequerimento || "Inicial",
       numeroProcesso: i.processo,
       dataEntrada: i.dataInicial,
       dataProtocolo: null,
@@ -188,22 +186,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const body = await req.json();
 
   // Validate required fields
   if (!body.nome?.trim()) {
-    return NextResponse.json({ error: "Nome do cliente obrigatório" }, { status: 400 });
   }
   if (!body.area) {
-    return NextResponse.json({ error: "Área de atuação obrigatória" }, { status: 400 });
   }
   if (!body.beneficio) {
-    return NextResponse.json({ error: "Benefício obrigatório" }, { status: 400 });
   }
   if (!body.responsavel) {
-    return NextResponse.json({ error: "Responsável obrigatório" }, { status: 400 });
   }
 
   // Validate beneficio belongs to area
@@ -211,7 +204,6 @@ export async function POST(req: NextRequest) {
   if (!area || !BENEFICIOS[area]?.includes(body.beneficio)) {
     return NextResponse.json(
       { error: `Benefício "${body.beneficio}" não pertence à área "${body.area}"` },
-      { status: 400 }
     );
   }
 
@@ -220,13 +212,11 @@ export async function POST(req: NextRequest) {
     if (!body.smContribuicao) {
       return NextResponse.json(
         { error: "Contribuição (CI/FBR) obrigatória para Salário Maternidade" },
-        { status: 400 }
       );
     }
     if (!body.smDpp) {
       return NextResponse.json(
         { error: "Data Prevista do Parto obrigatória para Salário Maternidade" },
-        { status: 400 }
       );
     }
   }
@@ -239,7 +229,6 @@ export async function POST(req: NextRequest) {
       natureza: body.natureza || "LEAD",
       area: body.area,
       beneficio: body.beneficio,
-      tipoRequerimento: body.tipoRequerimento || null,
       numeroProcesso: body.numeroProcesso?.trim() || null,
       dataEntrada: new Date(body.dataEntrada || new Date()),
       dataProtocolo: body.dataProtocolo ? new Date(body.dataProtocolo) : null,
@@ -259,5 +248,4 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(enrichFicha(ficha), { status: 201 });
 }

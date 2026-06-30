@@ -291,7 +291,6 @@ export function podeAvançarColuna(from: KanbanColuna, to: KanbanColuna, ficha: 
 
   // andamento → concluido
   if (from === "andamento" && to === ("concluido" as KanbanColuna)) {
-    const hasProcessData = ficha.tipoRequerimento && ficha.dataProtocolo;
     const obsIndicatesCompletion = ficha.observacoes?.toLowerCase().includes("concedido") ||
       ficha.observacoes?.toLowerCase().includes("arquivado") ||
       ficha.observacoes?.toLowerCase().includes("encerrado");
@@ -308,9 +307,6 @@ export function podeAvançarColuna(from: KanbanColuna, to: KanbanColuna, ficha: 
 }
 
 export function isBloqueadoMoverAndamento(ficha: Partial<FichaOperacional>): boolean {
-  if (ficha.tipoRequerimento === "RequerimentoAdministrativo" && ficha.cadSenha !== "OK") {
-    return true;
-  }
   return false;
 }
 
@@ -338,9 +334,6 @@ export function gerarAlertas(ficha: FichaOperacional): string[] {
   }
   if (ficha.natureza === "LEAD" && ficha.coluna === "novo" && new Date(ficha.dataEntrada).getTime() < Date.now() - 14 * 24 * 60 * 60 * 1000) {
     alertas.push("Lead sem avanço — risco de perda");
-  }
-  if (ficha.cadSenha !== "OK" && ficha.tipoRequerimento === "RequerimentoAdministrativo") {
-    alertas.push("CadSenha necessária antes de protocolar");
   }
   return alertas;
 }

@@ -4,7 +4,6 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.toLowerCase() ?? "";

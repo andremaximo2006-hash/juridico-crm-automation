@@ -92,8 +92,6 @@ function InicialModal({
       setForm({
         cliente: entry.cliente,
         processo: entry.processo ?? "",
-        areaAtuacao: entry.areaAtuacao ?? "",
-        tipoRequerimento: entry.tipoRequerimento ?? "",
         dataInicial: entry.dataInicial ? entry.dataInicial.slice(0, 10) : "",
         protocolo: entry.protocolo ?? "",
         responsavel: entry.responsavel ?? "",
@@ -336,7 +334,6 @@ export default function IniciaisTab() {
       list = list.filter((e) =>
         e.cliente.toLowerCase().includes(q) ||
         (e.processo ?? "").toLowerCase().includes(q) ||
-        (e.tipoRequerimento ?? "").toLowerCase().includes(q) ||
         (e.responsavel ?? "").toLowerCase().includes(q) ||
         (e.status ?? "").toLowerCase().includes(q) ||
         (e.observacoes ?? "").toLowerCase().includes(q)
@@ -500,9 +497,6 @@ export default function IniciaisTab() {
                     </p>
 
                     <div className="min-w-0 space-y-0.5">
-                      {e.areaAtuacao && <p className="text-xs font-semibold text-gray-700 truncate">{e.areaAtuacao}</p>}
-                      {e.tipoRequerimento && <p className="text-xs text-gray-400 truncate">{e.tipoRequerimento}</p>}
-                      {!e.areaAtuacao && !e.tipoRequerimento && <span className="text-xs text-gray-300">—</span>}
                     </div>
 
                     <p className="text-xs text-gray-600 truncate pt-0.5">
@@ -539,7 +533,6 @@ export default function IniciaisTab() {
                         <p className="text-sm font-semibold text-gray-900 truncate">{e.cliente}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {e.dataInicial ? new Date(e.dataInicial).toLocaleDateString("pt-BR") : "—"}
-                          {e.tipoRequerimento && ` · ${e.tipoRequerimento}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 mt-0.5">
@@ -552,7 +545,6 @@ export default function IniciaisTab() {
                     {expanded && (
                       <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-1.5 text-xs text-gray-600">
                         {e.processo      && <p><span className="text-gray-400 w-24 inline-block">Processo:</span>{e.processo}</p>}
-                        {e.areaAtuacao   && <p><span className="text-gray-400 w-24 inline-block">Área:</span>{e.areaAtuacao}</p>}
                         {e.protocolo     && <p><span className="text-gray-400 w-24 inline-block">Protocolo:</span>{e.protocolo}</p>}
                         {e.responsavel   && <p><span className="text-gray-400 w-24 inline-block">Responsável:</span>{e.responsavel}</p>}
                         {e.observacoes   && <p><span className="text-gray-400 w-24 inline-block">Obs:</span>{e.observacoes}</p>}

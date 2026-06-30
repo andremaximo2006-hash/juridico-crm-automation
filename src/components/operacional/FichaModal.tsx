@@ -185,7 +185,6 @@ export function FichaModal({ ficha, onSave, onClose }: FichaModalProps) {
               <SelectField
                 label="Tipo de requerimento"
                 options={TIPOS_REQUERIMENTO}
-                value={form.tipoRequerimento}
                 onChange={(v: string) => handleChange("tipoRequerimento", v)}
               />
               <InputField

@@ -20,14 +20,13 @@ function enrichFicha(ficha: any) {
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
   const novaColuna: KanbanColuna = body.coluna;
 
   if (!novaColuna) {
-    return NextResponse.json({ error: "Coluna obrigatória" }, { status: 400 });
+    return NextResponse.json({ error: "Coluna não especificada" }, { status: 400 });
   }
 
   // Fetch current ficha
@@ -43,7 +42,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!progression.allowed) {
     return NextResponse.json(
       { error: `Não é possível mover de "${colunaAtual}" para "${novaColuna}": ${progression.reason}` },
-      { status: 403 }
     );
   }
 
@@ -53,7 +51,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       {
         error: "Procuração/CadSenha pendente. Regularize antes de protocolar o requerimento.",
       },
-      { status: 403 }
     );
   }
 

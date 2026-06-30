@@ -32,13 +32,10 @@ function normalizeNatureza(v: string): string {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "Arquivo não enviado" }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "Arquivo muito grande. Limite: 5MB" }, { status: 413 });
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
