@@ -10,8 +10,6 @@ interface InicialEntry {
   id: string;
   cliente: string;
   processo: string | null;
-  areaAtuacao: string | null;
-  tipoRequerimento: string | null;
   dataInicial: string | null;
   protocolo: string | null;
   responsavel: string | null;
@@ -47,8 +45,6 @@ const STATUS_OPTIONS = [
 const EMPTY_FORM = {
   cliente: "",
   processo: "",
-  areaAtuacao: "",
-  tipoRequerimento: "",
   dataInicial: "",
   protocolo: "",
   responsavel: "",
@@ -168,10 +164,7 @@ function InicialModal({
 
           <div className="grid grid-cols-2 gap-3">
             {sel("Processo", "processo", PROCESSOS)}
-            {sel("Área de atuação", "areaAtuacao", AREAS)}
           </div>
-
-          {inp("Tipo de requerimento", "tipoRequerimento", "text", "BPC/LOAS, Auxílio doença...")}
 
           <div className="grid grid-cols-2 gap-3">
             {inp("Data inicial", "dataInicial", "date")}

@@ -10,14 +10,12 @@ interface PrazoEntry {
   id: string;
   cliente: string;
   processo: string | null;
-  areaAtuacao: string | null;
   tipoPrazo: string | null;
   dataInicial: string | null;
   dataFinal: string | null;
   responsavel: string | null;
   status: string | null;
   observacoes: string | null;
-  modificadoPor: string | null;
   updatedAt: string;
 }
 
@@ -142,7 +140,6 @@ function EditModal({
 
           <div className="grid grid-cols-2 gap-3">
             {field("Processo", "processo")}
-            {field("Área de atuação", "areaAtuacao")}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -209,7 +206,6 @@ export default function PrazosTab() {
   const [rows, setRows] = useState<PrazoEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [filterArea, setFilterArea] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editEntry, setEditEntry] = useState<PrazoEntry | null>(null);
@@ -219,14 +215,13 @@ export default function PrazosTab() {
     try {
       const params = new URLSearchParams();
       if (query) params.set("q", query);
-      if (filterArea) params.set("area", filterArea);
       if (filterStatus) params.set("status", filterStatus);
       const res = await fetch(`/api/operacional/prazos?${params}`);
       setRows(await res.json());
     } finally {
       setLoading(false);
     }
-  }, [query, filterArea, filterStatus]);
+  }, [query, filterStatus]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
@@ -272,14 +267,6 @@ export default function PrazosTab() {
             </button>
           )}
         </div>
-        <select
-          value={filterArea}
-          onChange={(e) => setFilterArea(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Todas as áreas</option>
-          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -346,18 +333,11 @@ export default function PrazosTab() {
                       )}
                     </div>
 
-                    {/* Modificado por */}
+                    {/* Data de atualização */}
                     <div className="min-w-0">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <User size={10} className="text-indigo-400 shrink-0" />
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                        <p className="text-xs text-gray-400 mt-0.5 truncate">
-                          {new Date(r.updatedAt).toLocaleDateString("pt-BR")}
-                        </p>
-                      )}
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
+                        {new Date(r.updatedAt).toLocaleDateString("pt-BR")}
+                      </p>
                     </div>
 
                     <p className="text-xs text-gray-400 line-clamp-2">{r.observacoes || "—"}</p>
@@ -406,11 +386,6 @@ export default function PrazosTab() {
                         {r.processo && <p><span className="text-gray-400 w-24 inline-block">Processo:</span> {r.processo}</p>}
                         {r.tipoPrazo && <p><span className="text-gray-400 w-24 inline-block">Tipo:</span> {r.tipoPrazo}</p>}
                         {r.responsavel && <p><span className="text-gray-400 w-24 inline-block">Responsável:</span> {r.responsavel}</p>}
-                          <p>
-                            <span className="text-gray-400 w-24 inline-block">Modificado:</span>
-                            {" · "}{new Date(r.updatedAt).toLocaleDateString("pt-BR")}
-                          </p>
-                        )}
                         {r.observacoes && <p><span className="text-gray-400 w-24 inline-block">Obs:</span> {r.observacoes}</p>}
                       </div>
                     )}

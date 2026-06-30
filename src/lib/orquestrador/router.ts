@@ -121,9 +121,9 @@ function avaliarViabilidade(
       if (dados.demitido && dados.tempo_desemprego < 2) return "viavel";
       return "talvez";
     },
-    nao_identificado: () => "pendente"
+    nao_identificado: () => "talvez"
   };
 
   const avaliador = regrasViabilidade[tipoBeneficio];
-  return avaliador ? avaliador(conversa.dados) : "pendente";
+  return avaliador ? avaliador(conversa.dados) : "talvez";
 }

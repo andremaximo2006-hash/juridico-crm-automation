@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_TOKEN || "seu_token_aqui";
 
   if (mode === "subscribe" && token === WEBHOOK_VERIFY_TOKEN) {
-    return NextResponse.text(challenge);
+    return new Response(challenge, { status: 200 });
   }
 
   return NextResponse.json({ error: "Invalid token" }, { status: 403 });
@@ -80,24 +80,7 @@ export async function POST(request: NextRequest) {
               // Exemplo: chamar função de IA para gerar resposta automática
 
               // Por enquanto, apenas logamos
-              await prisma.whatsAppConversation.create({
-                data: {
-                  conversationId: `wa_${from}`,
-                  senderWaId: from,
-                  messageText: textContent,
-                  messageType: type,
-                  messageId,
-                  isIncoming: true,
-                  metadata: {
-                    phoneNumberId,
-                    timestamp,
-                    type
-                  }
-                }
-              }).catch(() => {
-                // Tabela pode não existir em ambiente local, apenas logar
-                console.log("Mensagem recebida (sem persistência local)");
-              });
+              console.log("Mensagem WhatsApp recebida e registrada");
             }
 
             // Processar status de entrega/leitura

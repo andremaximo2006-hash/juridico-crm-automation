@@ -160,11 +160,8 @@ export default function FechamentosTable({
                     )}
                   </div>
                   <div className="min-w-0 space-y-0.5">
-                    )}
                     {e.beneficioDemanda && (
                       <p className="text-xs text-gray-400 truncate">{e.beneficioDemanda}</p>
-                    )}
-                      <span className="text-xs text-gray-300">—</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-600 truncate">{e.setor || <span className="text-gray-300">—</span>}</p>

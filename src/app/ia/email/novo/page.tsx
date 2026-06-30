@@ -89,7 +89,7 @@ export default function NovoTemplatePage() {
             className="w-full px-4 py-2 border rounded font-mono text-sm"
             required
           />
-          <p className="text-xs text-gray-500 mt-2">Use {{variavel}} para placeholders dinâmicos</p>
+          <p className="text-xs text-gray-500 mt-2">Use variáveis como {'{nome}'} e {'{data}'} para placeholders dinâmicos</p>
         </div>
 
         <div className="flex gap-4">
