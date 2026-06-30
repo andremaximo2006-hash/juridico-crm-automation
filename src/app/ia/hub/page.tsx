@@ -6,12 +6,16 @@ export default function HubPage() {
   const modulos = [
     { titulo: "📊 Dashboard", descricao: "Análise de conversas e especialistas", icon: "📊", href: "/ia/dashboard", novo: true },
     { titulo: "📋 Relatórios", descricao: "Gerar relatórios em PDF/Excel", icon: "📋", href: "/ia/relatorios", novo: true },
-    { titulo: "🔔 Notificações", descricao: "Eventos importantes em tempo real", icon: "🔔", href: "/ia/notificacoes", novo: true },
+    { titulo: "📈 Analytics", descricao: "Gráficos e tendências avançados", icon: "📈", href: "/ia/analytics", novo: true },
+    { titulo: "🔔 Notificações", descricao: "Eventos em tempo real", icon: "🔔", href: "/ia/notificacoes", novo: true },
     { titulo: "🔍 Filtros", descricao: "Busque conversas com precisão", icon: "🔍", href: "/ia/filtros", novo: true },
-    { titulo: "👥 Atendimento", descricao: "Recepção IA com Marta", icon: "💬", href: "/ia/atendimento", novo: false },
+    { titulo: "🔎 Busca Global", descricao: "Encontre tudo no sistema", icon: "🔎", href: "/ia/busca", novo: true },
+    { titulo: "⚙️ Configurações", descricao: "Personalize o sistema", icon: "⚙️", href: "/ia/configuracoes", novo: true },
+    { titulo: "👥 Equipe", descricao: "Gerencie especialistas e atendentes", icon: "👥", href: "/ia/equipe", novo: true },
+    { titulo: "⚡ Automações", descricao: "Configure regras automáticas", icon: "⚡", href: "/ia/automacoes", novo: true },
+    { titulo: "💬 Atendimento", descricao: "Recepção IA com Marta", icon: "💬", href: "/ia/atendimento", novo: false },
     { titulo: "📱 WhatsApp", descricao: "Integração Meta Business", icon: "📱", href: "/ia/whatsapp", novo: false },
     { titulo: "📧 Email", descricao: "Campanhas de email IA", icon: "📧", href: "/ia/email", novo: false },
-    { titulo: "📞 SMS", descricao: "Mensagens SMS automáticas", icon: "📞", href: "/ia/sms", novo: false },
   ];
 
   return (
