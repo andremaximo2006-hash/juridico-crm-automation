@@ -1,205 +1,179 @@
 "use client";
-
-import { BarChart3, Brain, MessageCircle, TrendingUp, Settings } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
+import { Download, Filter, TrendingUp, Users, MessageSquare } from "lucide-react";
 
-export default function IADashboard() {
+export default function DashboardPage() {
+  const stats = {
+    conversasTotal: 127,
+    conversasHoje: 8,
+    especialistasAtivos: 4,
+    scoreMediaGeral: 73.5,
+    taxaConversao: 34.2,
+    tempoMedioResposta: "2m 15s",
+  };
+
+  const conversasChart = [
+    { dia: "Seg", conversas: 12 },
+    { dia: "Ter", conversas: 19 },
+    { dia: "Qua", conversas: 15 },
+    { dia: "Qui", conversas: 22 },
+    { dia: "Sex", conversas: 18 },
+  ];
+
+  const especialistas = [
+    { nome: "Ana (INSS)", conversas: 45, score: 78 },
+    { nome: "Carolina (BPC)", conversas: 32, score: 71 },
+    { nome: "Helena (Mat)", conversas: 28, score: 75 },
+    { nome: "Ricardo (Acid)", conversas: 22, score: 68 },
+  ];
+
+  const topConversas = [
+    { id: "1", cliente: "João Silva", especialista: "Ana", score: 85, status: "Concluída" },
+    { id: "2", cliente: "Maria Santos", especialista: "Carolina", score: 72, status: "Ativa" },
+    { id: "3", cliente: "Pedro Costa", especialista: "Helena", score: 91, status: "Concluída" },
+    { id: "4", cliente: "Ana Paula", especialista: "Ricardo", score: 64, status: "Ativa" },
+    { id: "5", cliente: "Carlos Mendes", especialista: "Ana", score: 88, status: "Concluída" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-100 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">🤖 IA Atendimento</h1>
-          <p className="text-gray-600">Gerencie seus assistentes de IA jurídicos</p>
-        </div>
+        <Link href="/ia" className="text-blue-600 hover:text-blue-800 mb-6 inline-block">
+          ← Voltar
+        </Link>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500 mb-1">Total de Conversas</div>
-            <div className="text-4xl font-bold text-gray-900">1.245</div>
-            <div className="text-xs text-green-600 mt-2">↑ 12% vs semana passada</div>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800">📊 Dashboard</h1>
+            <p className="text-gray-600">Análise de conversas e especialistas</p>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500 mb-1">Chats Hoje</div>
-            <div className="text-4xl font-bold text-gray-900">47</div>
-            <div className="text-xs text-gray-600 mt-2">9h 30min tempo médio</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm text-gray-500 mb-1">Satisfação</div>
-            <div className="text-4xl font-bold text-gray-900">4.8</div>
-            <div className="text-xs text-gray-600 mt-2">de 5.0 ⭐</div>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+              <Download size={16} /> Exportar
+            </button>
+            <button className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 flex items-center gap-2">
+              <Filter size={16} /> Filtrar
+            </button>
           </div>
         </div>
 
-        {/* IA Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Super Agent */}
-          <Link href="/ia/super-agent">
-            <div className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <Brain className="text-indigo-600" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Super Agent Jurídico</h3>
-                    <p className="text-sm text-gray-500">Assistente legal</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="text-sm text-gray-600 mb-4">
-                  ✅ Ativo | 🟢 Online
-                </div>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• Análise de casos</li>
-                  <li>• Busca de jurisprudência</li>
-                  <li>• Geração de relatórios</li>
-                </ul>
-                <button className="text-indigo-600 font-medium text-sm hover:text-indigo-700">
-                  Iniciar Chat →
-                </button>
-              </div>
-            </div>
-          </Link>
-
-          {/* WhatsApp IA */}
-          <Link href="/ia">
-            <div className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <MessageCircle className="text-green-600" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">WhatsApp IA</h3>
-                    <p className="text-sm text-gray-500">Atendimento automático</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="text-sm text-gray-600 mb-4">
-                  ✅ Ativo | 🔴 5 aguardando
-                </div>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• Respostas automáticas</li>
-                  <li>• Fila de atendimento</li>
-                  <li>• Escalação automática</li>
-                </ul>
-                <button className="text-green-600 font-medium text-sm hover:text-green-700">
-                  Ver Fila →
-                </button>
-              </div>
-            </div>
-          </Link>
-
-          {/* Email IA */}
-          <Link href="/ia/email">
-            <div className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <MessageCircle className="text-orange-600" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Email IA</h3>
-                    <p className="text-sm text-gray-500">Campanhas de email</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="text-sm text-gray-600 mb-4">
-                  ✅ Ativo | 📧 Ready
-                </div>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• Templates dinâmicos</li>
-                  <li>• Campanhas automáticas</li>
-                  <li>• Rastreamento de taxa</li>
-                </ul>
-                <button className="text-orange-600 font-medium text-sm hover:text-orange-700">
-                  Ver Templates →
-                </button>
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Analytics */}
-          <Link href="/ia/analytics">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 cursor-pointer hover:shadow-lg transition">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Analytics</h3>
-                  <p className="text-sm text-gray-600">Métricas de uso</p>
-                </div>
-                <BarChart3 className="text-blue-600" size={32} />
-              </div>
-              <p className="text-sm text-gray-600">
-                Acompanhe performance, custo e satisfação
-              </p>
-            </div>
-          </Link>
-
-          {/* Configurações */}
-          <Link href="/ia/configuracoes">
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-6 cursor-pointer hover:shadow-lg transition">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Configurações</h3>
-                  <p className="text-sm text-gray-600">Setup de APIs</p>
-                </div>
-                <Settings className="text-indigo-600" size={32} />
-              </div>
-              <p className="text-sm text-gray-600">
-                Gerencie keys, modelos e comportamento
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Recent Conversations */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Conversas Recentes</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+            <p className="text-gray-600 text-sm">Total</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.conversasTotal}</p>
           </div>
-          <div className="p-6">
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
+            <p className="text-gray-600 text-sm">Hoje</p>
+            <p className="text-2xl font-bold text-green-600">{stats.conversasHoje}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
+            <p className="text-gray-600 text-sm">Especialistas</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.especialistasAtivos}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
+            <p className="text-gray-600 text-sm">Score Médio</p>
+            <p className="text-2xl font-bold text-orange-600">{stats.scoreMediaGeral}%</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+            <p className="text-gray-600 text-sm">Taxa</p>
+            <p className="text-2xl font-bold text-red-600">{stats.taxaConversao}%</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4 border-l-4 border-cyan-500">
+            <p className="text-gray-600 text-sm">Tempo</p>
+            <p className="text-2xl font-bold text-cyan-600">{stats.tempoMedioResposta}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">📈 Conversas por Dia</h2>
+            <div className="space-y-3">
+              {conversasChart.map((item, idx) => (
+                <div key={idx}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium">{item.dia}</span>
+                    <span className="text-sm font-bold">{item.conversas}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${(item.conversas / 22) * 100}%` }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">🎯 Benefícios</h2>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">INSS</span>
+                  <span className="text-sm font-bold">45 (35%)</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="bg-blue-500 h-3 rounded-full" style={{ width: "35%" }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">BPC/LOAS</span>
+                  <span className="text-sm font-bold">32 (25%)</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="bg-green-500 h-3 rounded-full" style={{ width: "25%" }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium">Maternidade</span>
+                  <span className="text-sm font-bold">28 (22%)</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="bg-yellow-500 h-3 rounded-full" style={{ width: "22%" }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">👥 Especialistas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {especialistas.map((esp, idx) => (
+              <div key={idx} className="bg-blue-50 rounded-lg p-4">
+                <p className="font-semibold text-gray-800 mb-2">{esp.nome}</p>
+                <p className="text-xs text-gray-600">Conversas: <span className="font-bold text-blue-600">{esp.conversas}</span></p>
+                <p className="text-xs text-gray-600">Score: <span className="font-bold text-green-600">{esp.score}%</span></p>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div className="bg-green-500 h-2 rounded-full" style={{ width: `${esp.score}%` }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">🏆 Top Conversas</h2>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-gray-600 border-b">
-                <tr>
-                  <th className="text-left py-3">Cliente</th>
-                  <th className="text-left py-3">IA</th>
-                  <th className="text-left py-3">Assunto</th>
-                  <th className="text-left py-3">Data</th>
-                  <th className="text-left py-3">Status</th>
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="px-4 py-2 text-left font-semibold">Cliente</th>
+                  <th className="px-4 py-2 text-left font-semibold">Especialista</th>
+                  <th className="px-4 py-2 text-left font-semibold">Score</th>
+                  <th className="px-4 py-2 text-left font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3">João Silva</td>
-                  <td>Super Agent</td>
-                  <td>Análise de viabilidade</td>
-                  <td>2026-06-29 14:32</td>
-                  <td><span className="text-green-600">Concluído</span></td>
-                </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3">Maria Santos</td>
-                  <td>WhatsApp IA</td>
-                  <td>Dúvida sobre prazo</td>
-                  <td>2026-06-29 11:15</td>
-                  <td><span className="text-blue-600">Ativo</span></td>
-                </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="py-3">Tech Solutions</td>
-                  <td>Marketing IA</td>
-                  <td>ROI de campanha</td>
-                  <td>2026-06-29 09:45</td>
-                  <td><span className="text-green-600">Concluído</span></td>
-                </tr>
+                {topConversas.map((conv) => (
+                  <tr key={conv.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{conv.cliente}</td>
+                    <td className="px-4 py-3">{conv.especialista}</td>
+                    <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-bold ${conv.score >= 80 ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>{conv.score}%</span></td>
+                    <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-bold ${conv.status === "Concluída" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>{conv.status}</span></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
