@@ -11,12 +11,21 @@ export default function WhatsAppIAPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Link
-          href="/ia/whatsapp/configuracao"
+          href="/ia/whatsapp/meta-setup"
           className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg hover:shadow-lg cursor-pointer transition"
         >
-          <div className="text-3xl mb-2">⚙️</div>
-          <h3 className="font-semibold text-lg mb-2">Configuração</h3>
-          <p className="text-green-100 text-sm">Configure Meta Webhook</p>
+          <div className="text-3xl mb-2">📱</div>
+          <h3 className="font-semibold text-lg mb-2">Meta Setup</h3>
+          <p className="text-green-100 text-sm">Configurar conta Meta Business</p>
+        </Link>
+
+        <Link
+          href="/ia/whatsapp/monitor"
+          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg hover:shadow-lg cursor-pointer transition"
+        >
+          <div className="text-3xl mb-2">📊</div>
+          <h3 className="font-semibold text-lg mb-2">Monitor</h3>
+          <p className="text-purple-100 text-sm">Acompanhe webhooks em tempo real</p>
         </Link>
 
         <Link
@@ -25,22 +34,13 @@ export default function WhatsAppIAPage() {
         >
           <div className="text-3xl mb-2">📋</div>
           <h3 className="font-semibold text-lg mb-2">Roteiros</h3>
-          <p className="text-gray-600 text-sm">Crie e gerencie roteiros de qualificação</p>
-        </Link>
-
-        <Link
-          href="/ia/whatsapp/conversar/test"
-          className="bg-white p-6 rounded-lg border hover:shadow-lg cursor-pointer transition"
-        >
-          <div className="text-3xl mb-2">💬</div>
-          <h3 className="font-semibold text-lg mb-2">Testar Chat</h3>
-          <p className="text-gray-600 text-sm">Teste roteiros em tempo real</p>
+          <p className="text-gray-600 text-sm">Crie roteiros de qualificação</p>
         </Link>
 
         <Link href="/ia/whatsapp/fila" className="bg-white p-6 rounded-lg border hover:shadow-lg cursor-pointer transition">
-          <div className="text-3xl mb-2">📊</div>
+          <div className="text-3xl mb-2">🎯</div>
           <h3 className="font-semibold text-lg mb-2">Fila</h3>
-          <p className="text-gray-600 text-sm">Veja leads qualificados e scoring</p>
+          <p className="text-gray-600 text-sm">Leads qualificados e scoring</p>
         </Link>
       </div>
 

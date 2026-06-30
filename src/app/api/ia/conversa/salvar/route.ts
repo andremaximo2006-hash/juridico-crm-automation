@@ -21,30 +21,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Salvar ou atualizar conversa usando índice único
-    const conversa = await prisma.iAConversa.upsert({
+    // Buscar conversa existente
+    let conversa = await prisma.iAConversa.findFirst({
       where: {
-        iaId_participanteId: {
-          iaId: body.iaId,
-          participanteId: body.participanteId || "",
-        },
-      },
-      update: {
-        participante: body.participante,
-        mensagens: body.mensagens,
-        dados: body.dados,
-        updatedAt: new Date(),
-      },
-      create: {
         iaId: body.iaId,
-        participante: body.participante,
-        participanteId: body.participanteId || "",
-        canal: body.canal as any,
-        mensagens: body.mensagens,
-        dados: body.dados,
-        status: "ativa",
+        participanteId: body.participanteId,
       },
     });
+
+    // Salvar ou atualizar conversa
+    if (conversa) {
+      conversa = await prisma.iAConversa.update({
+        where: { id: conversa.id },
+        data: {
+          participante: body.participante,
+          mensagens: body.mensagens,
+          dados: body.dados,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      conversa = await prisma.iAConversa.create({
+        data: {
+          iaId: body.iaId,
+          participante: body.participante,
+          participanteId: body.participanteId || "",
+          canal: body.canal as any,
+          mensagens: body.mensagens,
+          dados: body.dados,
+          status: "ativa",
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { processWhatsAppMessage } from "@/lib/whatsapp-service";
+import {
+  processWhatsAppMessageWithClaude,
+  enviarMensagemMeta,
+} from "@/lib/whatsapp-claude-service";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
@@ -76,13 +79,12 @@ export async function POST(request: NextRequest) {
         logger.info("[Webhook] Novo lead criado", { leadId: lead.id, phone: from });
       }
 
-      // Processar com Super Agent
-      const result = await processWhatsAppMessage({
+      // Processar com Claude IA (Marta + 4 Especialistas)
+      const result = await processWhatsAppMessageWithClaude({
         leadId: lead.id,
+        leadPhone: from,
+        leadName: name || lead.name,
         message: messageText,
-        platform: "meta",
-        platformContactId: from,
-        phoneNumber: from,
       });
 
       // Responder via Meta
@@ -91,17 +93,24 @@ export async function POST(request: NextRequest) {
       });
 
       if (integration) {
-        await sendMetaMessage({
-          accessToken: integration.apiKey!,
+        await enviarMensagemMeta({
           phoneNumberId: integration.phoneNumberId!,
-          to: from,
-          message: result.response,
+          accessToken: integration.apiKey!,
+          destinatario: from,
+          mensagem: result.response,
         });
       }
 
       if (result.status === "transferred_to_human") {
         logger.info("[Webhook] Lead transferido para humano", {
           leadId: lead.id,
+        });
+      }
+
+      if (result.especialista) {
+        logger.info("[Webhook] Lead rotado para especialista", {
+          leadId: lead.id,
+          especialista: result.especialista,
         });
       }
     }
@@ -195,48 +204,3 @@ function extractMetaMessages(
   return messages;
 }
 
-/**
- * Envia mensagem via Meta Business API
- */
-async function sendMetaMessage({
-  accessToken,
-  phoneNumberId,
-  to,
-  message,
-}: {
-  accessToken: string;
-  phoneNumberId: string;
-  to: string;
-  message: string;
-}): Promise<void> {
-  try {
-    const response = await fetch(
-      `https://graph.instagram.com/v18.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to,
-          type: "text",
-          text: { preview_url: false, body: message },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      logger.warn("[Meta] Erro ao enviar mensagem", {
-        status: response.status,
-        to,
-      });
-    } else {
-      logger.info("[Meta] Mensagem enviada com sucesso", { to });
-    }
-  } catch (error) {
-    logger.error("[Meta] Erro de conexão", error);
-  }
-}
