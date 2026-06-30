@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Settings, Scale, LogOut, Sun, Moon, Menu, X, Calendar, Bot, TrendingUp, ChevronDown, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Scale, LogOut, Sun, Moon, Menu, X, Calendar, Bot, TrendingUp, ChevronDown, BarChart3, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { hasMenuAccess } from "@/lib/menu-access";
@@ -34,6 +34,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
     menuId: "ia-atendimento",
     roles: ["admin", "padrao"],
     submenu: [
+      { href: "/ia/hub", icon: Rocket, label: "🚀 IA Hub", menuId: "ia-hub", roles: ["admin", "padrao"] },
+      { href: "/ia/atendimento", icon: Bot, label: "Atendimento", menuId: "ia-atendimento", roles: ["admin", "padrao"] },
       { href: "/ia/roteiros", icon: Settings, label: "Roteiros", menuId: "ia-roteiros", roles: ["admin"] },
       { href: "/ia/conversas", icon: Users, label: "Conversas", menuId: "ia-conversas", roles: ["admin"] },
       { href: "/ia/atendimento-humano", icon: Users, label: "Atendimento Humano", menuId: "ia-atendimento-humano", roles: ["admin"] },
