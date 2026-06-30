@@ -10,6 +10,11 @@ interface Mensagem {
   timestamp: Date;
 }
 
+interface MessageHistory {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function RecepcaoIA() {
   const [mensagens, setMensagens] = useState<Mensagem[]>([
     {
@@ -25,9 +30,8 @@ Qual é o seu primeiro nome?`,
   ]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
-  const [etapa, setEtapa] = useState('nome'); // nome, apresentacao, qualificacao
-  const [nomeCliente, setNomeCliente] = useState('');
   const [score, setScore] = useState(0);
+  const [erro, setErro] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -39,7 +43,9 @@ Qual é o seu primeiro nome?`,
   }, [mensagens]);
 
   const enviarMensagem = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || loading) return;
+
+    setErro('');
 
     // Adicionar mensagem do lead
     const novaMensagemLead: Mensagem = {
@@ -53,45 +59,55 @@ Qual é o seu primeiro nome?`,
     setInputValue('');
     setLoading(true);
 
-    // Simular resposta da Marta
-    setTimeout(() => {
-      let resposta = '';
-      let novaEtapa = etapa;
+    try {
+      // Construir histórico de mensagens
+      const historico: MessageHistory[] = mensagens
+        .filter(m => m.remetente !== 'marta' || m.id !== '1') // Excluir mensagem inicial
+        .map(m => ({
+          role: m.remetente === 'lead' ? 'user' : 'assistant',
+          content: m.conteudo
+        }));
 
-      if (etapa === 'nome') {
-        setNomeCliente(inputValue);
-        resposta = `Oi, ${inputValue}! Eu sou a Marta, analista jurídica da Dra. Gabrielle.
-Nosso escritório fica localizado na Baixada Santista e atendemos clientes de todo o Brasil.
-Você já acessou o nosso instagram? Postamos dicas diárias sobre como conseguir seus direitos do INSS.
-https://www.instagram.com/gabriellenunes.prev/
+      const response = await fetch('/api/ia/conversar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mensagem: inputValue,
+          historico
+        })
+      });
 
-Aproveita e nos siga ❤️
-
-Como posso te ajudar hoje? Pode me contar um resumo do seu caso...`;
-        novaEtapa = 'apresentacao';
-        setScore(10);
-      } else if (etapa === 'apresentacao') {
-        resposta = `Entendi seu caso. Deixa eu fazer algumas perguntas para ver se você pode ter direito ao benefício.
-
-Há quanto tempo você trabalha/trabalhou?`;
-        novaEtapa = 'qualificacao';
-        setScore(30);
-      } else if (etapa === 'qualificacao') {
-        resposta = `Certo! E você tinha carteira assinada? Ou trabalhou como autônomo/contribuinte?`;
-        setScore(50);
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
       }
 
+      const data = await response.json();
+
+      if (data.error) {
+        setErro(data.error);
+        setLoading(false);
+        return;
+      }
+
+      // Calcular novo score
+      const novoScore = Math.min(100, score + Math.random() * 20);
+      setScore(novoScore);
+
+      // Adicionar resposta de Marta
       const novaMensagemMarta: Mensagem = {
         id: (Date.now() + 1).toString(),
         remetente: 'marta',
-        conteudo: resposta,
+        conteudo: data.resposta,
         timestamp: new Date()
       };
 
       setMensagens(prev => [...prev, novaMensagemMarta]);
-      setEtapa(novaEtapa);
+    } catch (erro) {
+      console.error('Erro ao enviar mensagem:', erro);
+      setErro(erro instanceof Error ? erro.message : 'Erro ao processar mensagem');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -103,27 +119,27 @@ Há quanto tempo você trabalha/trabalhou?`;
             ← Voltar
           </Link>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">💬 Recepção IA - Marta</h1>
-          <p className="text-gray-600">Analista Jurídica - Especializada em Benefícios INSS</p>
+          <p className="text-gray-600">Analista Jurídica - Especializada em Benefícios INSS (Com Claude API)</p>
         </div>
 
         {/* Score Badge */}
-        <div className="flex gap-4 mb-6">
-          <div className="bg-white rounded-lg p-4 flex-1 shadow-sm border-l-4 border-blue-500">
-            <p className="text-sm text-gray-600">Score de Qualificação</p>
-            <p className="text-2xl font-bold text-blue-600">{score}%</p>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full transition-all"
-                style={{ width: `${score}%` }}
-              ></div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 flex-1 shadow-sm border-l-4 border-green-500">
-            <p className="text-sm text-gray-600">Etapa Atual</p>
-            <p className="text-lg font-bold text-green-600 capitalize">{etapa}</p>
+        <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500 mb-6">
+          <p className="text-sm text-gray-600">Score de Qualificação</p>
+          <p className="text-2xl font-bold text-blue-600">{Math.round(score)}%</p>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all"
+              style={{ width: `${score}%` }}
+            ></div>
           </div>
         </div>
+
+        {/* Error Message */}
+        {erro && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
+            {erro}
+          </div>
+        )}
 
         {/* Chat Container */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6 h-96 overflow-y-auto">
@@ -155,8 +171,8 @@ Há quanto tempo você trabalha/trabalhou?`;
                 <div className="bg-gray-100 text-gray-800 rounded-lg rounded-bl-none px-4 py-3">
                   <div className="flex space-x-2">
                     <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                   </div>
                 </div>
               </div>
@@ -174,27 +190,20 @@ Há quanto tempo você trabalha/trabalhou?`;
             onKeyPress={e => e.key === 'Enter' && enviarMensagem()}
             placeholder="Digite sua mensagem..."
             disabled={loading}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
           />
           <button
             onClick={enviarMensagem}
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition font-semibold"
           >
-            {loading ? '⏳' : '📤'}
+            {loading ? '...' : 'Enviar'}
           </button>
         </div>
 
-        {/* Info */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
-          <p className="font-semibold mb-2">ℹ️ Sobre esta IA:</p>
-          <ul className="space-y-1 text-xs">
-            <li>✓ Segue rigorosamente o roteiro de recepção</li>
-            <li>✓ Qualifica o cliente para o benefício correto</li>
-            <li>✓ Calcula score de viabilidade em tempo real</li>
-            <li>✓ Roteia para especialista quando identificado</li>
-          </ul>
-        </div>
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          💡 Dica: Marta usa Claude API para respostas naturais e personalizadas
+        </p>
       </div>
     </div>
   );
