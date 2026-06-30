@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, UserCheck, DollarSign, BarChart3, Settings, Scale, LogOut, ClipboardList, Sun, Moon, Menu, X, Calendar, Bot, TrendingUp, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Users, Settings, Scale, LogOut, Sun, Moon, Menu, X, Calendar, Bot, TrendingUp, ChevronDown, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { hasMenuAccess } from "@/lib/menu-access";
@@ -36,25 +36,13 @@ const ALL_NAV_ITEMS: NavItem[] = [
     submenu: [
       { href: "/ia/roteiros", icon: Settings, label: "Roteiros", menuId: "ia-roteiros", roles: ["admin"] },
       { href: "/ia/conversas", icon: Users, label: "Conversas", menuId: "ia-conversas", roles: ["admin"] },
-      { href: "/ia/atendimento-humano", icon: UserCheck, label: "Atendimento Humano", menuId: "ia-atendimento-humano", roles: ["admin"] },
+      { href: "/ia/atendimento-humano", icon: Users, label: "Atendimento Humano", menuId: "ia-atendimento-humano", roles: ["admin"] },
     ]
   },
-  { href: "/clientes", icon: UserCheck, label: "Clientes", menuId: "clientes", roles: ["admin", "padrao"] },
-  {
-    icon: ClipboardList,
-    label: "Operacional",
-    menuId: "operacional",
-    roles: ["admin", "padrao"],
-    submenu: [
-      { href: "/operacional", icon: BarChart3, label: "📊 Kanban Principal", menuId: "operacional-kanban", roles: ["admin", "padrao"] },
-      { href: "/operacional/abas", icon: BarChart3, label: "📋 Abas", menuId: "operacional-abas", roles: ["admin", "padrao"] },
-      { href: "/operacional/abas?tab=cadsenha", icon: BarChart3, label: "🔐 CADSENHA", menuId: "operacional-cadsenha", roles: ["admin", "padrao"] },
-      { href: "/operacional/abas?tab=iniciais", icon: BarChart3, label: "📝 INICIAIS", menuId: "operacional-iniciais", roles: ["admin", "padrao"] },
-      { href: "/operacional/abas?tab=salmaternidade", icon: BarChart3, label: "👶 SAL. MATERNIDADE", menuId: "operacional-salmaternidade", roles: ["admin", "padrao"] },
-      { href: "/operacional/abas?tab=pagina16", icon: BarChart3, label: "📄 PÁGINA 16", menuId: "operacional-pagina16", roles: ["admin", "padrao"] },
-    ]
-  },
-  { href: "/financeiro", icon: DollarSign, label: "Financeiro", menuId: "financeiro", roles: ["admin", "financeiro"] },
+  // Menus desativados - migrados para dashboard_operacional
+  // { href: "/clientes", icon: UserCheck, label: "Clientes", menuId: "clientes", roles: ["admin", "padrao"] },
+  // { icon: ClipboardList, label: "Operacional", menuId: "operacional", roles: ["admin", "padrao"], submenu: [...] },
+  // { href: "/financeiro", icon: DollarSign, label: "Financeiro", menuId: "financeiro", roles: ["admin", "financeiro"] },
   {
     icon: TrendingUp,
     label: "Gerencial",
